@@ -41,7 +41,7 @@ request model (`AGENTS.md`, CFG-7):
 | kind | CLI | does | writes |
 |---|---|---|---|
 | `init` | admin | sets an agent up: input, commit, compute, brief | the agent's fixed files |
-| `create_snapshot` | admin | freezes the agent's commit: code, environment, machine settings | one snapshot per commit (section 3) |
+| `create_snapshot` | admin | freezes the agent's commit with the `snapshot` skill's script | one snapshot per commit (section 3) |
 | `launch` | admin | starts the agent as its own headless session in the snapshot | a binding line, the session's final output |
 | `status` | agent | the entry point: state, `last_run`, stale decisions, `next` (what to call) | nothing |
 | `run` | agent | processing: segment, cluster, measure ... | artifacts, one folder per identity |
@@ -159,21 +159,12 @@ needs the box plots against the rest of the step.
   tracked files only (`--untracked-files=no`), so one stray file cannot block every agent. Every
   later command refuses code of another commit.
 - **Run from a snapshot.** Agents, humans with an agent's task, and the jobs they submit run from
-  a snapshot of the pinned commit, never from a live checkout. Commits land in a checkout while
-  agents work, and the code under an agent must not change. `create_snapshot` builds one snapshot
-  per commit, and every step is deterministic:
-  1. It extracts the files of the commit with `git archive`. The snapshot has no `.git`, so no git
-     command can switch its code.
-  2. It installs the environment from the lock file of the commit into the snapshot. Nothing
-     installs into it again, and an agent runs no installer.
-  3. It copies the machine settings file (`.env`). It refuses a relative path in it, because the
-     path would resolve inside the snapshot.
-  4. It writes a marker file last. A snapshot without the marker is not finished, and
-     `create_snapshot` completes it.
-
-  Keep snapshots inside the repository (`<repo>/.snapshots/<commit>/`, gitignored). Claude Code
-  runs the hooks of an agent only in a trusted folder, and a folder inside a trusted one counts
-  (section 5). A job submitted from a snapshot runs in it and needs no snapshot of its own.
+  the snapshot of the pinned commit, never from a live checkout. The `snapshot` skill owns how:
+  why, the layout in `<repo>/.snapshots/<commit>/`, the logs, and `create_snapshot.sh`. The
+  admin CLI's `create_snapshot` wraps that script with the agent's commit and name
+  (`--commit <commit> --log <agent>`). It does not implement the steps again. Every `pixi run` in
+  the snapshot, the agent's and its jobs', is `pixi run --frozen --no-install`. A job submitted
+  from the snapshot runs in it and needs no snapshot of its own.
 
 ## 4. Layout: one folder per agent, browsable by a human
 

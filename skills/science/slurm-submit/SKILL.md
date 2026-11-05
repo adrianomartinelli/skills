@@ -1,6 +1,6 @@
 ---
 name: slurm-submit
-description: Job submission workflow for this cluster -- commit/snapshot/canary/fan-out sequence (canary only when jobs share a submission mechanism, e.g. a fold/seed sweep -- a single independent run skips it), fast_dev_run as a Lightning training job's own pre-submission check, immutable code and environment snapshots, and account/fair-share mediation when jobs won't start. Archiving what a job produced follows `AGENTS.md` ART-6. Builds on the slurm-ops skill (right-sizing, diagnostics). Use for sbatch, srun, job arrays, sweeps, "submit a job", "run on the cluster".
+description: Job submission workflow on a Slurm cluster -- QOS/account/partition discovery proven by probe jobs, commit/snapshot/canary/fan-out sequence (canary only when jobs share a submission mechanism, e.g. a fold/seed sweep -- a single independent run skips it), fast_dev_run as a Lightning training job's own pre-submission check, snapshots through the `snapshot` skill, and account/fair-share mediation when jobs won't start. Archiving what a job produced follows `AGENTS.md` ART-6. Builds on the slurm-ops skill (right-sizing, diagnostics). Use for sbatch, srun, job arrays, sweeps, "submit a job", "run on the cluster".
 ---
 
 # slurm-submit
@@ -32,17 +32,61 @@ than folding it into a `--wrap` string that nothing can typecheck or lint.
 
 ## QOS/account/partition inventory: check the project doc first
 
+This skill names no real cluster's partitions, QOS, accounts or limits. Every such value below is
+an example, marked as one, and is not a default. The values for the cluster you are on come from
+the project's `docs/hpc.md`, built by the steps here.
+
 - Before choosing `--qos`/`--account`/`--partition`, check the project's `docs/hpc.md` for a
-  persistent inventory of what exists on this cluster, which account(s)/QOS combos are usable,
-  and quirks that aren't discoverable from a single `sinfo`/`sacctmgr` call (e.g. a QOS that
-  silently rejects submissions outside some parameter range).
-- If `docs/hpc.md` doesn't exist yet, don't guess: run `sacctmgr show assoc user=$USER
-  format=account,qos%40 -p`, `sinfo -o "%P %l %G"`, and `scontrol show partition` to discover
-  what's actually usable, then write the findings to `docs/hpc.md` (an account/QOS/partition
-  table plus a running "quirks" list) before submitting, so the next session or agent doesn't
-  redo the same exploration.
+  persistent inventory of what exists on the cluster, which account/partition/QOS combos are
+  proven usable, and quirks that aren't discoverable from a single `sinfo`/`sacctmgr` call (e.g. a
+  QOS that silently rejects submissions outside some parameter range).
+- If `docs/hpc.md` doesn't exist yet, or lacks the combo you need, don't guess. Discover:
+
+  ```bash
+  # which accounts and QOS you are associated with, per partition where the site sets that
+  sacctmgr show assoc user=$USER format=account,partition,qos%60,defaultqos -p
+  # what each of those QOS allows: wall-clock cap, per-user caps, group caps, priority
+  sacctmgr show qos <qos1>,<qos2>,... \
+    format=Name%30,Priority,MaxWall,MaxTRESPU%40,MaxJobsPU,MaxSubmitPU,GrpTRES%40,Flags -p
+  # partitions: wall-clock limit, GRES, and which accounts/QOS each one admits
+  sinfo -o "%P %l %G"
+  scontrol show partition <part> | grep -oE "(Allow|Deny)(Accounts|Qos)=[^ ]*|QoS=[^ ]*"
+  ```
+
+  A combo is a candidate only when all three agree: your association lists the QOS, the
+  partition's `AllowQos`/`AllowAccounts` admit it (`ALL` counts), and the QOS's `MaxWall` covers
+  the `--time` you need. To pick a tier, take the QOS with the smallest `MaxWall` that still covers
+  the request, read from `sacctmgr show qos`, never assumed from the QOS name.
+- **A candidate is not usable until a probe job proves it.** Discovery output is the cluster's
+  configuration as `sacctmgr` reports it; it does not prove the scheduler will run your job under
+  that combo (see Preflight 3 below: `sbatch` accepts QOS the partition then refuses). `sbatch
+  --test-only` is not proof either: it estimates a start without running anything. For each combo
+  the project will actually use, submit the smallest job that partition accepts:
+
+  ```bash
+  sbatch --account=<acct> --partition=<part> --qos=<qos> --time=00:01:00 --mem=100M \
+    --cpus-per-task=1 [--gres=gpu:1] --job-name=probe-<qos> --output=/dev/null --wrap='true'
+  sacct -j <id> -X -n -P --format=JobID,Account,Partition,QOS,State,ExitCode,Start,NodeList
+  ```
+
+  The probe passes only when `sacct` shows `COMPLETED`, exit `0:0`, and the same `Account`,
+  `Partition` and `QOS` you requested. Slurm records what it actually charged and scheduled, so a
+  silent substitution shows up here. A probe still pending with a reason that names permission
+  (`QOSNotAllowed`, `Job's QOS not permitted to use this partition`, `InvalidAccount`,
+  `PartitionConfig`) means the combo is not usable: `scancel` it and record that. A probe pending on
+  `Priority` or `Resources` has proven nothing yet; record it as unverified rather than wait
+  without bound.
+- Probe only the combos the project will submit under, not every combination discovery lists.
+  A probe on a GPU partition (where `--gres` is mandatory) or under a privileged QOS still charges
+  the account, so ask the user before probing those, as for choosing an account to charge.
+- Write the result to `docs/hpc.md` before the real submission: one table row per combo with the
+  QOS limits from `sacctmgr show qos`, and an evidence column holding the probe's job ID, date and
+  `sacct` line, or "unverified" / "refused: <reason>". A row with no probe evidence is not usable.
+  Add a running "quirks" list below the table, so the next session or agent doesn't redo the same
+  exploration.
 - Treat `docs/hpc.md` as living: when a submission fails for a QOS/partition/account reason not
-  yet recorded there, add a one-line note once it's resolved.
+  yet recorded there, add a one-line note once it's resolved. A QOS or partition change on the
+  cluster makes old evidence stale, so re-probe a combo when a real job under it is refused.
 
 ## Commit -> snapshot -> canary -> fan-out sequence
 
@@ -51,74 +95,15 @@ than folding it into a `--wrap` string that nothing can typecheck or lint.
 > not when it was submitted, so commits that land during the queue wait silently change what it
 > runs. Steps 1 and 2 below are the fix.
 
-Combines `slurm-ops`'s "canary before fan-out" with the project-level snapshot policy
-(`AGENTS.md`, RUN-11) into one recipe -- neither states it as a single sequence
-on its own, so it's spelled out here:
+Combines `slurm-ops`'s "canary before fan-out" with the `snapshot` skill into one recipe:
 
-1. **Commit** whatever the job will run. A working tree that keeps changing under a multi-hour
-   fan-out is exactly what the snapshot step exists to prevent.
-2. **Snapshot** that commit with `snapshot.sh <name>`, which prints the snapshot path. `<name>` is
-   the script or skill submitting the job and groups its logs:
-
-   ```bash
-   snapshot=$(bash <skill base directory>/snapshot.sh <name>)   # from the project root
-   sbatch --chdir="$snapshot" \
-     --output="$snapshot/.logs/<name>/%j-%x.out" --error="$snapshot/.logs/<name>/%j-%x.err" ...
-   ```
-
-   It does five things, and each corresponds to a failure seen in practice:
-
-   - **Logs in the live checkout, not the snapshot.** `.logs/<name>/<job-id>-<job-name>.{out,err}`
-     (and `.log` for a log file the job writes itself, e.g.
-     `$SLURM_JOB_ID-$SLURM_JOB_NAME.log`) sit under the repository root; the snapshot only holds a
-     `.logs` symlink to it. Logs written into the snapshot itself made every snapshot
-     undeletable, because removing it removed the only record of its jobs. `--output` is an
-     sbatch argument, so nothing in the project's settings or path classes governs it -- this is
-     the one place that does. `snapshot.sh` also creates `.logs/<name>/` up front: Slurm does not
-     create a missing output directory, and a job that cannot open its log fails without writing
-     one.
-
-   - **`git archive`, not `git worktree`.** An archive is a plain directory with no `.git`, so
-     nothing can `checkout` inside it, there is no worktree bookkeeping to leak, and it cannot
-     break if the main repo is moved or garbage-collected. A worktree is a *mutable checkout*
-     that git tracks -- weaker for something whose only job is to stay identical.
-   - **Refuses a dirty tree.** An archive extracts a commit, so uncommitted work is simply absent.
-     Submitting from a dirty tree means running something nobody reviewed, silently.
-   - **Environments addressed by `sha256(pixi.lock)`**, at `<repo_root>/.envs/<repo>-<hash>/` by
-     default (override with `ENV_ROOT`; `$HOME` is a poor default since home directories commonly
-     carry a small quota on shared clusters), symlinked
-     into the snapshot. This is the subtle one: sharing a live `.pixi` means a `pixi install` in
-     the working tree mutates the environment *under a running job* -- the exact class of failure
-     the snapshot exists to prevent -- while building a private environment per snapshot wastes
-     GBs re-resolving an identical lock. Hashing the lock gets both: same lock means the same
-     immutable environment, safely shared; changed dependencies mean a new hash and a new
-     directory, so running jobs keep theirs.
-   - **Rejects relative paths in `.env`.** A relative path resolves against the process's working
-     directory; from a snapshot that is a fresh empty directory *inside the snapshot*, not the
-     real dataset -- and it fails silently, as "no data" rather than as an error.
-
-   `.env` is copied rather than symlinked, for the same reason the environment is not shared: a
-   symlink would let a later edit change a running job's configuration.
-
-   **An editable pypi-dependency that lives outside the repo breaks under this.** A relative
-   `path = "../sibling-repo"` editable dependency in `[tool.pixi.pypi-dependencies]` resolves
-   against the directory containing `pyproject.toml` -- the live repo root during normal
-   development, but the *snapshot's* root once jobs run from `git archive`, which sits at a
-   completely different filesystem depth (`<repo_root>/.snapshots/<repo>/<sha>` by default, not next to the sibling
-   repo). `../sibling-repo` from there resolves to something that doesn't exist. Two fixes that
-   look plausible and don't work: symlinking the target into place under the snapshot (pixi's
-   freshness check compares path identity in a way a symlink doesn't satisfy, even though it
-   resolves to the right place) and rewriting the path to absolute in the snapshot's
-   `pyproject.toml` (`pixi.lock` carries its own relative record of the same path and gets
-   re-resolved from the snapshot's location regardless of what the manifest says). The actual fix
-   is two-part: run `pixi install --locked` in the *live* repo root, where the relative path is
-   genuinely valid, as the freshness check (this is what `snapshot.sh` does); then build the
-   snapshot's own environment with `--frozen` instead of `--locked` -- `--frozen` installs exactly
-   what's pinned without re-deriving freshness at all, so the location mismatch never gets a
-   chance to produce a false failure. It still has to physically open the dependency's source to
-   install it, which is why `snapshot.sh` also recreates each such editable dependency as a symlink
-   inside the snapshot pointing at its real location: a symlink is fine for a plain file open, only
-   pixi's freshness comparison rejected it.
+1. **Commit** whatever the job will run. A snapshot extracts a commit, so uncommitted work is
+   simply absent from the job.
+2. **Snapshot** that commit with the `snapshot` skill's `create_snapshot.sh --log <name>`, from the
+   project root. It prints the snapshot path; `<name>` is the script or skill submitting the job
+   and groups its logs under `.logs/<commit>/<name>/`. The `snapshot` skill owns why snapshots
+   exist, the layout, the logs, and how a job runs in one. A job submitted from inside a snapshot
+   (a pinned agent's own job) runs in that snapshot and skips this step.
 3. **Canary only when jobs will share one submission mechanism -- not by default.** A canary exists
    to catch a bug that would otherwise break *every* job in a batch the same way (a bad path, a
    broken per-task lookup, a wrong flag copy-pasted N times). A single independent training run --
@@ -133,28 +118,15 @@ on its own, so it's spelled out here:
    **the first real job**, submitted exactly the way the rest will be:
 
    ```bash
-   sbatch --account=<acct> --partition=<p> --qos=<p>-<tier> --gres=gpu:1 --time=<h>:00:00 \
-     --chdir="$snapshot" --job-name=fold-0 \
-     --output="$snapshot/.logs/train/%j-%x.out" --error="$snapshot/.logs/train/%j-%x.err" \
-     --wrap="PYTHONPATH=$snapshot/src pixi run --frozen --no-install python <entry point> --fold=0 ..."
+   sbatch --account=<acct> --partition=<p> --qos=<qos> --gres=gpu:1 --time=<h>:00:00 \
+     --chdir=<snapshot> --job-name=fold-0 \
+     --output=<repo>/.logs/<commit>/train/%j-%x.out --error=<repo>/.logs/<commit>/train/%j-%x.err \
+     --wrap="pixi run --frozen --no-install python <entry point> --fold=0 ..."
    ```
 
-   **`--frozen --no-install` is not optional.** Plain `pixi run` first brings the environment up to
-   date. Environments are shared by lockfile hash across snapshots (see `snapshot.sh`), and the
-   project is installed into them as an editable pypi dependency whose recorded path is whichever
-   tree last synced that env. Run from a *different* snapshot, pixi tries to re-link that editable
-   install — and when the tree it points at is gone, every job in the batch dies within seconds:
-
-   ```
-   × Failed to update PyPI packages for environment '<env>'
-   ╰─▶ failed to remove directory `.../site-packages/<pkg>-<ver>.dist-info`: No such file or
-       directory (os error 2)
-   ```
-
-   `--no-install` stops pixi touching the environment at all; `--frozen` stops it re-resolving the
-   lock. `PYTHONPATH` is still needed alongside them, for the separate reason `snapshot.sh` gives:
-   it decides which snapshot's *source* is imported, which the editable install would otherwise
-   decide for you.
+   **`--frozen --no-install` is not optional**, and both flags are written out: the jobs of a sweep
+   start together in one snapshot, and a plain `pixi run` would install into its environment from
+   each of them at once (the `snapshot` skill, "Why snapshots exist").
 
    If it's green, its output is a **kept datapoint**, not a throwaway probe -- there is no separate
    canary-only output tree for this case, because the run and the canary are the same job. Submit
@@ -235,7 +207,7 @@ solved. It is not: `SLURMEnvironment.auto_requeue` only covers the **signalled**
 `SIGUSR1` it writes an `hpc_ckpt_*.ckpt` and calls `scontrol requeue`, and the checkpoint connector
 auto-detects that file on restart. A hard node failure sends no signal, so there is no hpc
 checkpoint, and `trainer.fit(..., ckpt_path=None)` then trains from scratch under the same output
-directory. Seen directly on this cluster: six GPU jobs all carrying `Requeue=1`, of which the
+directory. Example, seen on one cluster: six GPU jobs all carrying `Requeue=1`, of which the
 framework-managed half would have restarted at step 0.
 
 The fix is one argument -- `ckpt_path=args.resume_from or "last"`, keeping an explicit
@@ -279,23 +251,26 @@ with free GPUs and `0` idle CPUs is full.
 squeue -j <id> -o "%.12i %.9T %.20r %.20S"
 ```
 
-A start estimate years away (seen: 2027) is the scheduler saying the request cannot be satisfied on
+A start estimate a year or more away is the scheduler saying the request cannot be satisfied on
 that partition. Treat it as an abort signal and resubmit elsewhere rather than waiting.
 
-**3. QOS acceptance is not QOS permission.** `sbatch` will happily accept `--qos=1day` and the
-partition will then refuse it, leaving the job pending forever with
-`Job's QOS not permitted to use this partition`. Submission succeeding proves nothing. QOS names
-are usually per-hardware (`l40s-1day`, `h200-6hours`), so a multi-partition list needs a QOS every
-listed partition allows. Enumerate before submitting:
+**3. QOS acceptance is not QOS permission.** `sbatch` will happily accept a `--qos` that the
+partition then refuses, leaving the job pending forever with
+`Job's QOS not permitted to use this partition`. Submission succeeding proves nothing. A
+multi-partition `--partition=a,b` list needs a QOS every listed partition allows. Enumerate before
+submitting:
 
 ```bash
 scontrol show partition <part> | grep -o "AllowQos=[^ ]*"
 ```
 
-Tiers are typically `30min / 6hours / 1day / 1week` -- there is no 8h or 12h tier, so anything over
-six hours uses the `1day` tier. A QOS permitted everywhere may exist but be a privileged allocation
-(higher priority, much longer wall); treat using one as an entitlement decision for the user, like
-choosing an account to charge.
+Then take the combo's probe evidence from `docs/hpc.md` (the inventory section above); a combo with
+none gets a probe first. QOS naming and tiers are site policy, so read each QOS's `MaxWall` from
+`sacctmgr show qos` instead of inferring it from the name. (Example from one cluster, not a
+default: QOS names were per-hardware, such as `l40s-1day` and `h200-6hours`, the tiers were
+`30min / 6hours / 1day / 1week`, and with no 8h tier a 7-hour job needed the `1day` QOS.) A QOS
+permitted everywhere may exist but be a privileged allocation (higher priority, much longer wall);
+treat using one as an entitlement decision for the user, like choosing an account to charge.
 
 **4. Never infer device sharing from `CUDA_VISIBLE_DEVICES`.** Under cgroups every job sees its own
 GPU renumbered to `0`, so `CUDA_VISIBLE_DEVICES=0` in every task looks like device sharing and is
@@ -330,8 +305,8 @@ squeue -j <id> -o "%i %T %r"
 - Reasons like `QOSMaxNodePerUserLimit`, `AssocGrpCPUMinutesLimit`, `QOSGrpCpuLimit` -- a hard cap
   tied to the account/QOS the job was submitted under, not a hardware shortage. Switching to a
   *different* account you have access to, with a different cap, unblocks this even if hardware is
-  free right now (seen directly: 146-way concurrency capped by `QOSMaxNodePerUserLimit` under
-  `mrapsoma_prometex` while other accounts had headroom).
+  free right now (example, seen on one cluster: a 146-way sweep capped by
+  `QOSMaxNodePerUserLimit` under one account while the user's other accounts had headroom).
 - Reason `Priority` -- the job is schedulable but other jobs (yours or others') rank ahead of it.
   This is where fair-share matters directly: your priority *within* an account depends on that
   account's fair-share factor, which drops the more it's been used recently relative to its share.
@@ -344,13 +319,13 @@ sshare -U --format=Account,FairShare,RawShares,NormShares,EffectvUsage
 
 `FairShare` ranges 0-1; closer to 1 means better remaining priority (that account's recent usage
 is low relative to its allocated share), closer to 0 means it's been heavily used and new jobs
-under it will queue behind everyone else's. Real example from this cluster:
+under it will queue behind everyone else's. Example output (illustrative account names and values):
 
 ```
 Account               FairShare
-mrapsoma_prometex      0.001107   <- heavily used, low priority
-rgottar1_owkin_spatial 0.827001   <- plenty of headroom
-rgottar1_spatial       0.808558   <- plenty of headroom
+<acct-a>               0.001107   <- heavily used, low priority
+<acct-b>               0.827001   <- plenty of headroom
+<acct-c>               0.808558   <- plenty of headroom
 ```
 
 **Mediation**: if a job is pending with reason `Priority` (or a QOS/Assoc limit reason) under your
@@ -375,4 +350,5 @@ Submission mechanics (snapshotting, canary discipline, archiving policy, account
 routing) are identical regardless of what a given project computes -- the same failure modes
 (relative paths breaking under a snapshot, a shared environment mutating under a running job, a
 hand-invoked canary missing real fan-out plumbing, a sweep archiving a live run, one account's
-fair-share tanking from unrelated jobs) recur on any project on this cluster.
+fair-share tanking from unrelated jobs) recur on any project on any Slurm cluster. What does differ per cluster (its partitions, QOS,
+accounts and limits) lives in each project's `docs/hpc.md`, not here.
