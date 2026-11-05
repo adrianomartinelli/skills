@@ -1,57 +1,59 @@
 ---
 name: document-status
-description: Use after finishing a chunk of work (a fix, a run, an experiment, a decision) to fold it into docs/status.md, docs/todo.md, docs/experiments.md, docs/retrospective.md, or docs/findings.md -- whichever it actually belongs in -- while preserving each file's required shape. Also covers experiments/runs that finished, failed, or were abandoned without ever getting written up. Trigger on "update the docs", "log this", "record status", "write up that run", or end-of-task wrap-up when docs/ exists in the project.
+description: Record finished work where it belongs -- open work and runs on GitHub issues, findings, decisions (ADRs), lessons, status -- keeping each file's shape. Use after a fix, a run, an experiment or a decision, for runs that finished, failed or were abandoned without a write-up, and on "update the docs", "log this", "write up that run", or end-of-task wrap-up.
 ---
 
 # document-status
 
-See `AGENTS.md`'s "Progress tracking" guidance for what each `docs/` file is *for*. This skill is
-the how-to for keeping them updated without breaking their shape.
+`AGENTS.md` "Progress tracking" says what each record is for; this skill is how to write to it.
 
-## Read before writing
+## 1. Read what is already recorded
 
-In order: `PROJECT.md`, then `docs/status.md` -> `docs/todo.md` -> `docs/experiments.md` ->
-`docs/retrospective.md`. Do this even for a small update -- routing depends on what's already
-recorded (an experiment already logged as in-flight needs its entry closed out, not a new one
-appended).
+`docs/status.md`, the open issues touching the work (`gh issue list --state open --json
+number,title,labels`), and the end of `docs/findings.md` and `docs/retrospective.md`. Routing
+depends on what exists: a run already on an issue gets a comment or a close, not a new issue.
 
-## Route by kind, not by convenience
+Then look for dangling runs: every open `experiment` issue whose job has finished, failed or been
+abandoned since its last comment (`sacct -j <id>`, the run's outputs). Write each one up, not only
+the run you were told about. Done when every open `experiment` issue's last comment matches its
+job's real state.
 
-Don't default everything into `status.md`. Pick the file the update is actually about:
+## 2. Route each piece to its record
 
-- **`status.md`** -- current state, what to read first on resume. Update when the overall picture
-  changed, not for every individual run.
-- **`todo.md`** -- open backlog. `- [ ]` / `- [x]` items, bold status vocabulary, priority expressed
-  as section grouping (`## Priority 1/2/3`) or a trailing suffix, never a numeric code.
-- **`experiments.md`** -- exact commands/configs/gates for runs, whether in flight, just finished,
-  failed, or abandoned. This is the most common gap: a run that completed or died since the doc was
-  last touched and never got written up. Check for these explicitly -- don't just add the run you
-  were told about, look for others left dangling.
-- **`retrospective.md`** -- transferable process lessons (what to do differently next time), not
-  what happened this run.
-- **`findings.md`** (optional) -- scientific/diagnostic findings about data or model. Give each a
-  stable `F<n>` ID the moment it's written so other docs can cite it.
+One update often lands in several records (a finished run closes its issue, adds a finding and
+moves the status table); write each piece where it belongs.
 
-A single update often touches more than one file (a finished run closes an `experiments.md` entry
-*and* may add a `findings.md` entry *and* may move a `todo.md` item to done) -- write to each one
-it actually belongs in, don't force it into a single file for convenience.
+- **Open work** (a deferred item, a bug found, a follow-up, an experiment to run): a GitHub issue,
+  as `docs/agents/issue-tracker.md` says, with one category and one state label
+  (`docs/agents/triage-labels.md`). An experiment is a sub-issue of the issue it decides.
+  Until the drafts in `docs/todo.md` are converted, add a draft there in its shape instead.
+- **A run in flight**: a comment on its experiment issue (job IDs, config, canary sizing, what went
+  wrong).
+- **A finished experiment**: close its issue with a comment giving the result and the finding it
+  added; the parent closes with the decision.
+- **A finding** (`docs/findings.md`): a claim about the data, a model or a method, backed by a run
+  or check a reader can repeat. Next free `F<n>`, then the claim as the heading, its evidence
+  (config, command or job) and date, and a closing `**Status:**` line saying how far it holds.
+- **A decision** that is hard to reverse, surprising without context and the result of a real
+  trade-off: an ADR in `docs/adr/`, next number, the domain-modeling skill's `ADR-FORMAT.md`.
+  A decision missing any of the three needs no record.
+- **A process lesson** (what to do differently next time, transferable beyond this project's file
+  names): `docs/retrospective.md`, "Open lessons", next number. A lesson that has become a check, a
+  rule or a skill moves to "Became a rule" as a one-line pointer, keeping its number.
+- **The phase or a headline result changed**: `docs/status.md`, its phase paragraph or results
+  table. A single run alone rarely changes it.
 
-## Preserve each file's shape
+## 3. Keep each record's shape
 
-- Bold status vocabulary declared once per file (default: `**planned**/**in-progress**/**blocked**/
-  **done**/**parked**`, narrowed per file if useful) -- reuse the file's existing vocabulary, don't
-  invent a new token.
-- Blocking or failure reasons are mechanism-level prose (`BLOCKED: job 12345 still reading these
-  outputs`, `FAILED: OOM at step 4200, batch_size 64 exceeded 40GB`), never a bare tag with no
-  mechanism.
-- Don't restructure existing headings or reorder sections to fit new content -- append/update
-  within what's there. Only introduce a new heading shape if the file doesn't have one yet.
-- Don't create a `docs/` file this project doesn't already use unless the update genuinely has
-  nowhere else to go (e.g. first finding ever -> create `findings.md` matching the schema above).
+- Write blocking and failure reasons as mechanism-level prose: `blocked by: job 12345 still
+  reading these outputs`, `failed: OOM at step 4200, batch_size 64 exceeded 40 GB`.
+- Cite by ID (`F<n>`, ADR number, lesson number, issue number) rather than restating; IDs are
+  permanent.
+- Append within the existing headings; a new heading shape only where the file has none yet.
+- Retire a stale doc by moving it to `docs/.archive/`.
 
 ## Out of scope
 
-- `WORKTREE.md` -- that's the branch-status protocol (`concurrent-sessions` skill), not this skill.
-- `docs/reference/` -- stable facts (resource sizing, cluster recipes), not session-resumable state;
-  don't fold a status update into it.
-- Retiring a stale snapshot: move it to `docs/.archive/` instead of deleting, per `AGENTS.md`.
+- `WORKTREE.md`: the branch-status protocol (`AGENTS.md`, PRC-1).
+- `docs/reference/`: stable facts (resource sizing, cluster recipes), updated when the fact
+  changes, not as session state.

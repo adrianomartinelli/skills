@@ -46,11 +46,13 @@
     "./skills/productivity/to-questionnaire",
     "./skills/productivity/wait-what",
     "./skills/productivity/writing-for-agents",
+    "./skills/science/agentic-system-design",
     "./skills/science/asd-ste100",
     "./skills/science/audit-tests",
     "./skills/science/document-status",
     "./skills/science/jsonargparse",
     "./skills/science/paper-review",
+    "./skills/science/policy",
     "./skills/science/prune-dead-code",
     "./skills/science/slurm-ops",
     "./skills/science/slurm-submit"

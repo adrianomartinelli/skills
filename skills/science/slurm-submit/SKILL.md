@@ -1,6 +1,6 @@
 ---
 name: slurm-submit
-description: Job submission workflow for this cluster -- commit/snapshot/canary/fan-out sequence (canary only when jobs share a submission mechanism, e.g. a fold/seed sweep -- a single independent run skips it), fast_dev_run as a Lightning training job's own pre-submission check, immutable code and environment snapshots, and account/fair-share mediation when jobs won't start. Archiving what a job produced is the artifacts skill. Builds on the slurm-ops skill (right-sizing, diagnostics). Use for sbatch, srun, job arrays, sweeps, "submit a job", "run on the cluster".
+description: Job submission workflow for this cluster -- commit/snapshot/canary/fan-out sequence (canary only when jobs share a submission mechanism, e.g. a fold/seed sweep -- a single independent run skips it), fast_dev_run as a Lightning training job's own pre-submission check, immutable code and environment snapshots, and account/fair-share mediation when jobs won't start. Archiving what a job produced follows `AGENTS.md` ART-6. Builds on the slurm-ops skill (right-sizing, diagnostics). Use for sbatch, srun, job arrays, sweeps, "submit a job", "run on the cluster".
 ---
 
 # slurm-submit
@@ -61,7 +61,7 @@ on its own, so it's spelled out here:
    the script or skill submitting the job and groups its logs:
 
    ```bash
-   snapshot=$(bash .claude/skills/slurm-submit/snapshot.sh <name>)
+   snapshot=$(bash <skill base directory>/snapshot.sh <name>)   # from the project root
    sbatch --chdir="$snapshot" \
      --output="$snapshot/.logs/<name>/%j-%x.out" --error="$snapshot/.logs/<name>/%j-%x.err" ...
    ```
@@ -249,7 +249,7 @@ and forget before the first `fit` run"*). Check the equivalent for any other fra
 compute. A metrics file opened in append mode (`open("a")`) will interleave the restarted run's
 rows with the original's in one file -- no error, no lost bytes, and every downstream consumer
 plots two trajectories as one curve. A non-monotonic step/iteration column is the tell; a writer
-that refuses to write over an existing artifact (see the `artifacts` skill) is the cure.
+that refuses to write over an existing artifact (`guarded_write`, `AGENTS.md` ART-3) is the cure.
 
 ## A CLI-override trap that bites exactly this kind of fan-out
 
@@ -362,11 +362,12 @@ decision, not just a scheduling one.
 
 ## Archiving a job's outputs
 
-Owned by the `artifacts` skill, not here: it governs anything a run writes, not only Slurm output.
-The short version is that archiving is approval-gated, takes one explicit path, is never swept, and
-that liveness is answered by `squeue`/`sacct` rather than inferred from the filesystem -- a sweep
-over "has config.json, lacks summary.json" once killed a running job at 68% of a 3.25 GPU-hour run,
-because those files are written at a run's start and end and so match a live job exactly.
+Governed by `AGENTS.md` ART-1 and ART-6, not here: they cover anything a run writes, not only
+Slurm output. The short version is that archiving is approval-gated, takes one explicit path, is
+never swept, and that liveness is answered by `squeue`/`sacct` rather than inferred from the
+filesystem -- a sweep over "has config.json, lacks summary.json" once killed a running job at 68%
+of a 3.25 GPU-hour run, because those files are written at a run's start and end and so match a
+live job exactly.
 
 ## Why this is a skill, not project docs
 
@@ -375,10 +376,3 @@ routing) are identical regardless of what a given project computes -- the same f
 (relative paths breaking under a snapshot, a shared environment mutating under a running job, a
 hand-invoked canary missing real fan-out plumbing, a sweep archiving a live run, one account's
 fair-share tanking from unrelated jobs) recur on any project on this cluster.
-
-It lives in this project's `.claude/skills/`, not in a user-level or global location: a skill that
-is only present where the repository is present cannot drift out of sync with the code it
-describes, and a clone of the project brings its own operating instructions with it. Improvements
-propagate to other projects through the `init` template remote (`docs/reference/template-updates.md`), which
-is a reviewed cherry-pick rather than an ambient sync -- so a project can hold a deliberate local
-adaptation instead of being silently overwritten.

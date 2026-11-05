@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Create an immutable code snapshot for a batch submission, and print its path.
 #
-#   snapshot=$(bash .claude/skills/slurm-submit/snapshot.sh <name>)
+#   snapshot=$(bash <slurm-submit skill dir>/snapshot.sh <name>)   # from the project root
 #   sbatch --chdir="$snapshot" \
 #     --output="$snapshot/.logs/<name>/%j-%x.out" --error="$snapshot/.logs/<name>/%j-%x.err" ...
 #
