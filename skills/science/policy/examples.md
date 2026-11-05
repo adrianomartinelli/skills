@@ -42,8 +42,7 @@ too.
 - ART-3: Code moves an artifact with `shutil.move`, `rename`, or `mv` instead of `archive`.
 - ART-4: A directory name records the reason for a move, for example `old_`, `broken_`, `_bad`, or
   `_superseded`.
-- ART-5: The diff adds scheduler logic or project-layout logic to `src/<project_name>/archive.py`.
-- ART-6: Code selects archive targets with a loop, a glob, or a predicate.
+- ART-5: Code selects archive targets with a loop, a glob, or a predicate.
 - SRC-1: A script defines a function that does file or network I/O.
 - SRC-2: A script defines a function that a second script also needs, or a function complex enough
   to need its own test.

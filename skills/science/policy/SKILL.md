@@ -58,7 +58,7 @@ each status:
     hand-built path that becomes a `paths.py` lookup.
   - `kind: "judgment"`: do not guess. Report it with the suggested fix, for the user to decide.
   - A `LEG` rule: never delete silently. Artifacts on disk are real, and a migration of them can be
-    a large job that needs approval (ART-6). State what the code keeps alive and how many artifacts
+    a large job that needs approval (ART-5). State what the code keeps alive and how many artifacts
     or callers depend on it. Ask the user whether it is needed, and propose the migration that
     removes it as the default.
 - **`refuted`**: the reviewer claimed a violation and the skeptic refuted every location. Give the
