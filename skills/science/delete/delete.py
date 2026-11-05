@@ -1,11 +1,11 @@
 """Delete paths strictly below OUTPUTS_DIR or <repo>/.snapshots/; refuse every other path.
 
-Run from the project root: `pixi run python <this dir>/delete.py [--check] <path> [<path> ...]`.
-OUTPUTS_DIR comes from the project's `Settings` class (`src/<package>/settings.py`).
+Run from the project root: `python3 <this dir>/delete.py [--check] <path> [<path> ...]`.
+OUTPUTS_DIR and DATA_DIR come from the project's `.env`, expanded like `Settings` does ($VAR, ~).
 """
 
 import argparse
-import importlib
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -13,12 +13,22 @@ from pathlib import Path
 MARKER = "IN_USE"  # written by a running job, see the slurm-submit skill
 
 
-def load_settings():
-    found = sorted(Path("src").glob("*/settings.py"))
-    if len(found) != 1:
-        sys.exit(f"delete: expected one src/<package>/settings.py below {Path.cwd()}, found {len(found)}")
-    sys.path.insert(0, "src")
-    return importlib.import_module(f"{found[0].parent.name}.settings").Settings()
+def read_env():
+    """KEY=value lines of `.env`, keys upper-cased (`Settings` is case-insensitive)."""
+    env = {}
+    for line in Path(".env").read_text().splitlines():
+        line = line.strip()
+        if line.startswith("export "):
+            line = line[len("export "):]
+        if line and not line.startswith("#") and "=" in line:
+            key, value = line.split("=", 1)
+            env[key.strip().upper()] = value.strip().strip("'\"")
+    return env
+
+
+def env_path(env, key):
+    value = env.get(key)
+    return Path(os.path.expandvars(value)).expanduser() if value else None
 
 
 def marker_of(target, base):
@@ -39,11 +49,14 @@ def main():
     parser.add_argument("paths", nargs="+")
     args = parser.parse_args()
 
-    settings = load_settings()
-    if not settings.outputs_dir.is_absolute():
-        sys.exit(f"delete: OUTPUTS_DIR is not absolute: {settings.outputs_dir}")
-    bases = [settings.outputs_dir.resolve(strict=True), (Path.cwd() / ".snapshots").resolve()]
-    data = getattr(settings, "data_dir", None)
+    if not Path(".env").is_file():
+        sys.exit(f"delete: no .env in {Path.cwd()}: run from the project root")
+    env = read_env()
+    outputs = env_path(env, "OUTPUTS_DIR")
+    if outputs is None or not outputs.is_absolute():
+        sys.exit(f"delete: OUTPUTS_DIR in .env is missing or not absolute: {outputs}")
+    bases = [outputs.resolve(strict=True), (Path.cwd() / ".snapshots").resolve()]
+    data = env_path(env, "DATA_DIR")
     data = data.resolve() if data else None
 
     for name in args.paths:
