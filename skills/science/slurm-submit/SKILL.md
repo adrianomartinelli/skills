@@ -350,11 +350,11 @@ decision, not just a scheduling one.
 
 ## Deleting a job's outputs
 
-Call the Skill tool with "delete". It applies `AGENTS.md` ART-1 and ART-6 to anything a run
-writes, not only Slurm output: one path below `OUTPUTS_DIR` that the user named and approved, never
-selected by a sweep, and liveness from `squeue`/`sacct`, not from the filesystem. A sweep over "has config.json, lacks summary.json" once killed a running
-job at 68% of a 3.25 GPU-hour run, because those files are written at a run's start and end and so
-match a live job exactly.
+Call the Skill tool with "delete". It deletes anything a run wrote below `OUTPUTS_DIR`, not only
+Slurm output, and refuses every other path (`AGENTS.md` ART-1, ART-6). Before a delete, get
+liveness from `squeue`/`sacct`, not from the filesystem. A sweep over "has config.json, lacks
+summary.json" once killed a running job at 68% of a 3.25 GPU-hour run, because those files are
+written at a run's start and end and so match a live job exactly.
 
 ## Why this is a skill, not project docs
 

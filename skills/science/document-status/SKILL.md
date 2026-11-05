@@ -50,7 +50,7 @@ moves the status table); write each piece where it belongs.
 - Cite by ID (`F<n>`, ADR number, lesson number, issue number) rather than restating; IDs are
   permanent.
 - Append within the existing headings; a new heading shape only where the file has none yet.
-- Retire a stale doc by moving it to `docs/.archive/`.
+- Retire a stale doc by deleting it. Git history keeps it.
 
 ## Out of scope
 

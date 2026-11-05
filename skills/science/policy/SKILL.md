@@ -57,9 +57,9 @@ each status:
   - `kind: "mechanical"` and the rule is not a `LEG` rule: apply the fix directly. Example: a
     hand-built path that becomes a `paths.py` lookup.
   - `kind: "judgment"`: do not guess. Report it with the suggested fix, for the user to decide.
-  - A `LEG` rule: never delete silently. Artifacts on disk are real, and a migration that deletes them
-    needs the user's approval for each path (ART-1, ART-6). State what the code keeps alive and how
-    many artifacts or callers depend on it. Ask the user whether it is needed, and propose the migration that
+  - A `LEG` rule: never delete silently. Artifacts on disk are real, and a migration deletes them only below
+    `OUTPUTS_DIR` (ART-1, ART-6). State what the code keeps alive and how many artifacts or callers
+    depend on it. Ask the user whether it is needed, and propose the migration that
     removes it as the default.
 - **`refuted`**: the reviewer claimed a violation and the skeptic refuted every location. Give the
   skeptic's reason in one line.

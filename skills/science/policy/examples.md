@@ -27,8 +27,8 @@ deleted, delete its lines here too.
   `argparse`, or builds a parser without `add_class_arguments`.
 - CFG-7: For the full check, read the "Writing an endpoint" section of
   the `jsonargparse` skill and compare each changed script with it.
-- PTH-1: Code outside `src/<project_name>/paths.py` builds a location under a root with a `Path(...) / ...` chain, an f-string that contains `/`, or
-  `os.path.join`.
+- PTH-1: Code outside `src/<project_name>/paths.py` builds a location under a root with a
+  `Path(...) / ...` chain, an f-string that contains `/`, or `os.path.join`.
 - PTH-2: The diff adds a kind of output (for example a report, a dataset, or a figure set) and no
   paths class for it.
 - PTH-3: A paths class sits outside `paths.py`.
@@ -38,8 +38,9 @@ deleted, delete its lines here too.
   example Lightning `ModelCheckpoint` with `save_top_k` other than `-1`.
 - ART-2: Code writes, moves, or deletes a path under `DATA_DIR` that the project did not create, for
   example under `data/raw/`, or writes to a path outside every `Settings` root.
-- ART-6: A script or a command deletes paths that it selects with a loop, a glob, or a predicate,
-  for example every run directory without `summary.json`. Delete through the `delete` skill.
+- ART-6: Code or a command deletes a path without resolving it (symlinks followed) and checking that
+  it lies strictly below `OUTPUTS_DIR`, for example `rm -r` or `shutil.rmtree` on a path built from
+  a config value. An agent deletes through the `delete` skill.
 - SRC-1: A script defines a function that does file or network I/O.
 - SRC-2: A script defines a function that a second script also needs, or a function complex enough
   to need its own test.
