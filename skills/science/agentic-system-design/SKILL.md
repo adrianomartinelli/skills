@@ -92,15 +92,15 @@ request model (`AGENTS.md`, CFG-7):
   - No figure when it adds nothing: names, IDs, state, or a table small enough for a human to read.
 - **One question per figure.** Put two panels in one figure only when they are read together (a
   heatmap and its cluster sizes); otherwise draw separate files. Several plain figures beat one
-  figure of five plots. An agent must be able to read every figure: keep it near 1 MP (the 7 x 7.4
-  in, 150 dpi cell-crop grid, about 1050 x 1110 px, is the upper limit), since larger images are
-  downscaled when read and fine detail is lost.
+  figure of five plots. An agent must be able to read every figure: keep it under 2 MP and 2000 px
+  on the long edge. A larger image is downscaled when it is read, and points and small numbers are
+  lost. Cap a figure's width when it grows with the data; split it into files when the cap is hit.
 
 For example `get_marker` prints each cluster's `[median, pct_step, pct_table]` and draws
 `markers/<marker>.png`; `get_composition` prints each sample's share per group and draws the
-stacked bars. A view that prints a distribution or a per-cluster profile and draws nothing is a
-gap: `get_cluster --ids` prints marker levels and sample shares, and a human checking a label
-needs the box plots against the rest of the step.
+stacked bars; `get_cluster --ids` prints each marker's `[median, pct_step, pct_table]` and draws
+`clusters/<id>.png`, the cluster's cells against the rest of the step per marker. Its three
+`top_samples` stay a table: a human reads three numbers faster than a bar plot.
 
 ## 2. Decisions
 
@@ -335,6 +335,25 @@ Build order:
 10. a pilot with one agent, which checks that its `calls.jsonl` fills
 11. log review and feedback
 12. changes from what they show
+
+## 9. Tools
+
+`AGENTS.md` ("Preferred tools") names the project's tools. They are repeated here for what each
+means in a workflow, because a workflow built on other tools loses the guarantees above:
+
+- **`pydantic`** for every request model, decision file and fixed config. The model is the schema
+  that `--help` shows and that validation refuses against (section 1, "Typed and strict").
+- **`jsonargparse`** for both CLIs: one subcommand per verb, each built from its request model
+  (`AGENTS.md`, CFG-7). No hand-written `argparse`.
+- **`pydantic-settings`** for machine settings only (paths, the scheduler). Nothing a decision
+  rests on comes from the environment.
+- **`marsilea`** for figures: box and strip plots, heatmaps, columns chunked by group, count bars
+  on the side. Use plain `matplotlib` only where marsilea has no plotter (a scatter, an image
+  grid). Draw at one fixed DPI so the size of a figure is predictable (section 1, "One question
+  per figure").
+- **`loguru`** for logs of `run` and jobs. A command's stdout holds only its YAML result, so the
+  agent and the call log parse it without noise.
+- **`pandas` / `pyarrow`** for tables, written as parquet; YAML for what an agent reads or sets.
 
 ## Anti-patterns (each one seen in practice)
 
