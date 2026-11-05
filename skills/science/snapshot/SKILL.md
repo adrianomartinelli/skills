@@ -59,9 +59,14 @@ What the script does. Each step prevents a failure seen in practice:
 2. **One environment per snapshot**, installed from the commit's own lock with
    `pixi install --all --locked`. Nothing outside the snapshot can change it. `--all` installs every
    environment, because a job can run `pixi run -e <env>` and a compute node cannot install one.
+   pixi hardlinks packages from its cache, so each environment costs little disk as long as the
+   cache is on the same filesystem as the repository.
 3. **`.env` is copied, not linked.** A later edit must not change the settings of a running job.
    A relative path in it (a `*_DIR`, `*_PATH` or `*_ROOT` key) is refused: from a snapshot it
-   resolves inside the snapshot, and fails as "no data", not as an error.
+   resolves inside the snapshot, and fails as "no data", not as an error. The script sees only the
+   keys written in `.env`, not a relative default that `.env` never sets. A project with a settings
+   class makes every path setting required and absolute in that class, so loading the settings
+   refuses what the script cannot see.
 4. **`snapshot.yaml` is written last** (commit, lock hash, time). A snapshot without it is not
    finished, and the next call finishes it.
 

@@ -128,6 +128,12 @@ Combines `slurm-ops`'s "canary before fan-out" with the `snapshot` skill into on
    start together in one snapshot, and a plain `pixi run` would install into its environment from
    each of them at once (the `snapshot` skill, "Why snapshots exist").
 
+   **A variable reaches the job only through `--export`.** A cluster can set `SBATCH_EXPORT=NONE`
+   in the login environment (record it in `docs/hpc.md`), and then a `VAR=x sbatch ...` prefix is
+   dropped with no error. Pass it as `--export=VAR=value`, without `ALL`: `ALL` brings back the whole
+   submitting shell's environment, a live checkout's pixi activation included. The job needs no
+   variable to know its commit: it runs in the snapshot, whose folder name is the commit.
+
    If it's green, its output is a **kept datapoint**, not a throwaway probe -- there is no separate
    canary-only output tree for this case, because the run and the canary are the same job. Submit
    the remaining folds/seeds only once that first job's real artifact exists and looks right
@@ -263,6 +269,13 @@ submitting:
 ```bash
 scontrol show partition <part> | grep -o "AllowQos=[^ ]*"
 ```
+
+`check-qos.sh <partition>[,<partition>...] [<qos>] <time>` (next to this file) makes the check one
+call, in front of `sbatch` with `&&`. It exits non-zero when a listed partition does not allow the
+QOS, when no `--qos` is given and the account's default QOS is not allowed, when the QOS is not in
+the account's QOS list, and when `--time` is over the QOS's `MaxWall`. That last one matters on a
+cluster with `EnforcePartLimits=NO`: a QOS without `DenyOnLimit` does not reject an over-long
+`--time` either, and the job pends forever with `QOSMaxWallDurationPerJobLimit`.
 
 Then take the combo's probe evidence from `docs/hpc.md` (the inventory section above); a combo with
 none gets a probe first. QOS naming and tiers are site policy, so read each QOS's `MaxWall` from
