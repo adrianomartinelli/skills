@@ -27,22 +27,19 @@ deleted, delete its lines here too.
   `argparse`, or builds a parser without `add_class_arguments`.
 - CFG-7: For the full check, read the "Writing an endpoint" section of
   the `jsonargparse` skill and compare each changed script with it.
-- PTH-1: Code outside `src/<project_name>/paths.py` and `src/<project_name>/archive.py` builds a
-  location under a root with a `Path(...) / ...` chain, an f-string that contains `/`, or
+- PTH-1: Code outside `src/<project_name>/paths.py` builds a location under a root with a `Path(...) / ...` chain, an f-string that contains `/`, or
   `os.path.join`.
 - PTH-2: The diff adds a kind of output (for example a report, a dataset, or a figure set) and no
   paths class for it.
 - PTH-3: A paths class sits outside `paths.py`.
 - ART-1: Code calls `unlink`, `os.remove`, `shutil.rmtree`, `rmdir`, or `rm` on a path that can be
-  in the output tree.
-- ART-1: Code configures a third-party writer that deletes: Lightning `ModelCheckpoint` with
-  `save_top_k` other than `-1`.
+  outside `OUTPUTS_DIR` (for example `data/processed/`) or that can be `OUTPUTS_DIR` itself.
+- ART-1: Code configures a third-party writer that deletes in a directory outside `OUTPUTS_DIR`, for
+  example Lightning `ModelCheckpoint` with `save_top_k` other than `-1`.
 - ART-2: Code writes, moves, or deletes a path under `DATA_DIR` that the project did not create, for
   example under `data/raw/`, or writes to a path outside every `Settings` root.
-- ART-3: Code moves an artifact with `shutil.move`, `rename`, or `mv` instead of `archive`.
-- ART-4: A directory name records the reason for a move, for example `old_`, `broken_`, `_bad`, or
-  `_superseded`.
-- ART-6: Code selects archive targets with a loop, a glob, or a predicate.
+- ART-6: A script or a command deletes paths that it selects with a loop, a glob, or a predicate,
+  for example every run directory without `summary.json`. Delete through the `delete` skill.
 - SRC-1: A script defines a function that does file or network I/O.
 - SRC-2: A script defines a function that a second script also needs, or a function complex enough
   to need its own test.

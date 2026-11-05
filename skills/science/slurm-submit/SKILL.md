@@ -1,6 +1,6 @@
 ---
 name: slurm-submit
-description: Job submission workflow on a Slurm cluster -- QOS/account/partition discovery proven by probe jobs, commit/snapshot/canary/fan-out sequence (canary only when jobs share a submission mechanism, e.g. a fold/seed sweep -- a single independent run skips it), fast_dev_run as a Lightning training job's own pre-submission check, snapshots through the `snapshot` skill, and account/fair-share mediation when jobs won't start. Archiving what a job produced follows `AGENTS.md` ART-6. Builds on the slurm-ops skill (right-sizing, diagnostics). Use for sbatch, srun, job arrays, sweeps, "submit a job", "run on the cluster".
+description: Job submission workflow on a Slurm cluster -- QOS/account/partition discovery proven by probe jobs, commit/snapshot/canary/fan-out sequence (canary only when jobs share a submission mechanism, e.g. a fold/seed sweep -- a single independent run skips it), fast_dev_run as a Lightning training job's own pre-submission check, snapshots through the `snapshot` skill, and account/fair-share mediation when jobs won't start. Deleting what a job produced goes through the `delete` skill. Builds on the slurm-ops skill (right-sizing, diagnostics). Use for sbatch, srun, job arrays, sweeps, "submit a job", "run on the cluster".
 ---
 
 # slurm-submit
@@ -348,18 +348,17 @@ than waiting it out on the default. Only switch to an account you're actually au
 to charge to -- when in doubt which one that is, ask rather than guess, since this is a billing
 decision, not just a scheduling one.
 
-## Archiving a job's outputs
+## Deleting a job's outputs
 
-Governed by `AGENTS.md` ART-1 and ART-6, not here: they cover anything a run writes, not only
-Slurm output. The short version is that archiving is approval-gated, takes one explicit path, is
-never swept, and that liveness is answered by `squeue`/`sacct` rather than inferred from the
-filesystem -- a sweep over "has config.json, lacks summary.json" once killed a running job at 68%
-of a 3.25 GPU-hour run, because those files are written at a run's start and end and so match a
-live job exactly.
+Call the Skill tool with "delete". It applies `AGENTS.md` ART-1 and ART-6 to anything a run
+writes, not only Slurm output: one path below `OUTPUTS_DIR` that the user named and approved, never
+selected by a sweep, and liveness from `squeue`/`sacct`, not from the filesystem. A sweep over "has config.json, lacks summary.json" once killed a running
+job at 68% of a 3.25 GPU-hour run, because those files are written at a run's start and end and so
+match a live job exactly.
 
 ## Why this is a skill, not project docs
 
-Submission mechanics (snapshotting, canary discipline, archiving policy, account/fair-share
+Submission mechanics (snapshotting, canary discipline, deletion policy, account/fair-share
 routing) are identical regardless of what a given project computes -- the same failure modes
 (relative paths breaking under a snapshot, a shared environment mutating under a running job, a
 hand-invoked canary missing real fan-out plumbing, a sweep archiving a live run, one account's
