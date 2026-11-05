@@ -18,8 +18,9 @@ Use this template for writing the PR body:
 
 ## Evidence
 
-- **Before:** <screenshot/output/failing test run>
-  **After:** <screenshot/output/passing test run>
+**E1: <question>**
+Setting: <what was run> · Result: <number or observation> · Verdict: <adopted / rejected / superseded by E<k>>
+![E1](<link pinned to a commit SHA>)
 
 ## Merge Danger
 
@@ -157,11 +158,23 @@ You may use one of these, you may use several, it is unlikely you will use all o
 
 ### Evidence
 
-Concrete evidence that the change works. Show a before and after.
+Concrete evidence that the change works, measured.
 
-Screenshots are S-tier - when the environment is set up for it and the change is visual.
+Measured experiments are S-tier. When the change alters a quantification (a mask, a segmentation, a feature, a score), run old and new on a few representative samples and report how the output changed: a metric (e.g. Dice/IoU, % area, correlation, Δ score) and a before/after figure.
 
-Execution-based evidence is A-tier. Test results, console output. Show the exact test that now fails and passes, using pseudocode.
+Execution-based evidence is A-tier. Test results, console output. Show the exact test that now fails and passes, using pseudocode. Use it alone only when the change does not alter any output.
+
+Give each experiment an ID (`E1`, `E2`, ...) with four one-line fields: **Question**, **Setting** (what was run, and how it differs from what is implemented), **Result**, **Verdict** (adopted, rejected, or superseded by `E<k>`). Keep rejected experiments; they show why the winner won. Put the setting in each figure's title so the figure reads without the text around it.
+
+#### Where evidence lives
+
+Persist it in the repo under `docs/prs/<n>-<slug>/`, one folder per PR, so it is browsable and can be turned into slides or artifacts for collaborators:
+
+- `README.md`: the experiments in run order, each self-contained (question, figure, result, verdict), plus provenance: script, run id, commit, input samples.
+- Figures named `E<k>_<what>.png`.
+- The scripts as run, and small result tables (`.csv`). No large data.
+
+Link figures from the PR body pinned to a commit SHA, not a branch.
 
 ### Merge Danger
 
