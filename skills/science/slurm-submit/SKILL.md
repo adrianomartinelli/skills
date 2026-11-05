@@ -1,6 +1,6 @@
 ---
 name: slurm-submit
-description: Job submission workflow for this cluster -- commit/snapshot/canary/fan-out sequence (canary only when jobs share a submission mechanism, e.g. a fold/seed sweep -- a single independent run skips it), fast_dev_run as a Lightning training job's own pre-submission check, immutable code and environment snapshots, and account/fair-share mediation when jobs won't start. Archiving what a job produced follows `AGENTS.md` ART-5. Builds on the slurm-ops skill (right-sizing, diagnostics). Use for sbatch, srun, job arrays, sweeps, "submit a job", "run on the cluster".
+description: Job submission workflow for this cluster -- commit/snapshot/canary/fan-out sequence (canary only when jobs share a submission mechanism, e.g. a fold/seed sweep -- a single independent run skips it), fast_dev_run as a Lightning training job's own pre-submission check, immutable code and environment snapshots, and account/fair-share mediation when jobs won't start. Archiving what a job produced follows `AGENTS.md` ART-6. Builds on the slurm-ops skill (right-sizing, diagnostics). Use for sbatch, srun, job arrays, sweeps, "submit a job", "run on the cluster".
 ---
 
 # slurm-submit
@@ -362,7 +362,7 @@ decision, not just a scheduling one.
 
 ## Archiving a job's outputs
 
-Governed by `AGENTS.md` ART-1 and ART-5, not here: they cover anything a run writes, not only
+Governed by `AGENTS.md` ART-1 and ART-6, not here: they cover anything a run writes, not only
 Slurm output. The short version is that archiving is approval-gated, takes one explicit path, is
 never swept, and that liveness is answered by `squeue`/`sacct` rather than inferred from the
 filesystem -- a sweep over "has config.json, lacks summary.json" once killed a running job at 68%

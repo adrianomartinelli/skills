@@ -3,8 +3,9 @@
 Each `###` subsection of a file's "## Policy" section is one group, and every `**<PREFIX>-<n>.**`
 rule under it belongs to that group. The workflow cannot read files, so this script is where the
 coverage check happens: it refuses a missing file, a rule outside a subsection, an empty subsection,
-a duplicate ID, or a gap in the numbering of a prefix. A refused file stops the review instead of
-leaving a rule unchecked.
+a duplicate ID, or an ID above its prefix's watermark (the `Watermark:` line under "## Policy"; IDs
+are never reused, so gaps are allowed). A refused file stops the review instead of leaving a rule
+unchecked.
 
 Usage, from the project root: python3 <skill dir>/groups.py [FILE ...]
 (default: AGENTS.md CODING_STANDARDS.md)
@@ -13,15 +14,15 @@ Usage, from the project root: python3 <skill dir>/groups.py [FILE ...]
 import json
 import re
 import sys
-from collections import defaultdict
 from pathlib import Path
 
 GROUP = re.compile(r"^### \d+\. (?P<title>.+?) \(`.*`\)$")
 RULE = re.compile(r"^\*\*(?P<prefix>[A-Z]+)-(?P<number>\d+)\.\*\*")
+ID = re.compile(r"(?P<prefix>[A-Z]+)-(?P<number>\d+)")
 
 
-def parse(name: str, text: str) -> list[dict]:
-    """Return each Policy subsection of `text` with its rule IDs. Exit on a defect."""
+def parse(name: str, text: str) -> tuple[list[dict], dict[str, int]]:
+    """Return the Policy subsections of `text` with their rule IDs, and its watermark."""
     lines = text.splitlines()
     if "## Policy" not in lines:
         sys.exit(f"{name} has no '## Policy' section")
@@ -29,8 +30,11 @@ def parse(name: str, text: str) -> list[dict]:
     end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")), len(lines))
 
     groups: list[dict] = []
+    watermark: dict[str, int] = {}
     for line in lines[start + 1 : end]:
-        if line.startswith("### "):
+        if line.startswith("Watermark:"):
+            watermark = {m["prefix"]: int(m["number"]) for m in ID.finditer(line)}
+        elif line.startswith("### "):
             match = GROUP.match(line)
             if not match:
                 sys.exit(f"{name}: Policy heading is not '### <n>. <title> (`PREFIX`)': {line}")
@@ -43,23 +47,24 @@ def parse(name: str, text: str) -> list[dict]:
     for group in groups:
         if not group["rules"]:
             sys.exit(f"{name}: Policy subsection with no rules: {group['title']}")
-    return groups
+    if not watermark:
+        sys.exit(f"{name}: no 'Watermark:' line under '## Policy'")
+    return groups, watermark
 
 
-def check(groups: list[dict]) -> None:
-    """Exit on a duplicate ID or a numbering gap, across all files."""
+def check(groups: list[dict], watermark: dict[str, int]) -> None:
+    """Exit on a duplicate ID, or an ID above its watermark, across all files."""
     ids = [rule for group in groups for rule in group["rules"]]
     duplicates = sorted({rule for rule in ids if ids.count(rule) > 1})
     if duplicates:
         sys.exit(f"Duplicate rule IDs: {', '.join(duplicates)}")
 
-    numbers: dict[str, list[int]] = defaultdict(list)
     for rule in ids:
         prefix, number = rule.split("-")
-        numbers[prefix].append(int(number))
-    for prefix, found in numbers.items():
-        if sorted(found) != list(range(1, len(found) + 1)):
-            sys.exit(f"{prefix} rules are not numbered 1 to {len(found)}: {sorted(found)}")
+        if prefix not in watermark:
+            sys.exit(f"{rule}: prefix {prefix} has no watermark")
+        if int(number) > watermark[prefix]:
+            sys.exit(f"{rule} is above the watermark {prefix}-{watermark[prefix]}; raise it")
 
 
 if __name__ == "__main__":
@@ -67,6 +72,10 @@ if __name__ == "__main__":
     for name in names:
         if not Path(name).is_file():
             sys.exit(f"{name} not found; run from the project root")
-    groups = [group for name in names for group in parse(name, Path(name).read_text())]
-    check(groups)
+    groups, watermark = [], {}
+    for name in names:
+        found, marks = parse(name, Path(name).read_text())
+        groups += found
+        watermark |= marks
+    check(groups, watermark)
     print(json.dumps(groups))

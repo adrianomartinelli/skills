@@ -10,8 +10,8 @@ and the Reason of every rule in its group, and uses these signs only as examples
 violation can look like. A sign is not a finding: report a violation only when the code breaks the
 rule itself.
 
-When you renumber rules (see "How to read the Policy section" in `AGENTS.md`), update the IDs here
-too.
+Rule IDs are never renumbered (see "How to read the Policy section" in `AGENTS.md`). When a rule is
+deleted, delete its lines here too.
 
 - CFG-1: Code, or a YAML file under `configs/`, contains a machine path, hostname, account name, or
   credential as a literal.
@@ -42,7 +42,7 @@ too.
 - ART-3: Code moves an artifact with `shutil.move`, `rename`, or `mv` instead of `archive`.
 - ART-4: A directory name records the reason for a move, for example `old_`, `broken_`, `_bad`, or
   `_superseded`.
-- ART-5: Code selects archive targets with a loop, a glob, or a predicate.
+- ART-6: Code selects archive targets with a loop, a glob, or a predicate.
 - SRC-1: A script defines a function that does file or network I/O.
 - SRC-2: A script defines a function that a second script also needs, or a function complex enough
   to need its own test.
