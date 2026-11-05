@@ -14,14 +14,14 @@ delete such a path.
 From the project root, run:
 
 ```
-python3 <this skill's base directory>/delete.py [--check] <path> [<path> ...]
+pixi run python <this skill's base directory>/delete.py [--check] <path> [<path> ...]
 ```
 
 A list or a glob is fine. `--check` reports each path and deletes nothing. The script reads
 `OUTPUTS_DIR` from the project's `.env`, follows every symlink, and deletes a path only if
 it is strictly below `OUTPUTS_DIR` or `.snapshots/` and carries no `IN_USE` marker.
 
-- If the script stops on a missing or relative `OUTPUTS_DIR`, show the user the error.
+- If an assert fails (no `.env`, or a missing or relative `OUTPUTS_DIR`), show the user the error.
 - Tell the user each `refused` line. Do not delete a refused path in a different way.
 - An `in use` line names the marker of a running job. The marker holds the job ID. If
   `sacct -j <job_id> -X -n -o State` shows that the job ended, the marker is stale: delete the
