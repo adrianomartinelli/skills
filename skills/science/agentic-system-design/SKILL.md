@@ -59,8 +59,6 @@ request model (`AGENTS.md`, CFG-7):
 
   For example `get_clusters`, then `get_cluster --ids`, and `--markers` to add columns. Bound the
   row count. Truncated output says how many rows it dropped and which flag shows them.
-- **Numbers and figures go together.** A command prints the numbers behind every figure. The
-  agent reads the numbers and looks at the figure when the shape matters.
 - **Reproducible evidence.** A `get_*` prints the same output for the same artifact, arguments and
   commit. Inspection never requires an edit of fixed config. When the decision is "choose k", a
   `get_* --k` shows the result of any k (counts, a gallery).
@@ -77,6 +75,32 @@ request model (`AGENTS.md`, CFG-7):
   call log hard to parse.
 - **Grow from use.** Add a command when feedback or a log review shows the need. Delete a command
   that no agent used in a round.
+
+### Two readers, agent first
+
+- **One call serves the agent and the human.** The agent decides from the printed numbers; the
+  same call draws the figure a human would read the same data from. Design the numbers for the
+  decision first, then ask what a human would have plotted to see it, and draw that too. The agent
+  may look at the figure as well; the human may read the numbers.
+  - The figure is the natural view, not a copy of the printed numbers. It may show more: the agent
+    reads quantiles, the human a histogram; the agent reads median and range per cluster, the human
+    a box plot with each value as a strip. Both come from the same data in the same call.
+  - The printed numbers are never replaced by the figure. Every number a decision rests on is
+    printed, so the agent never reads a value off a picture.
+  - When the image is the data (cell crops, a segmentation overlay, a channel's signal), the image
+    is the one artifact both read. Do not add statistics computed from it as an agent version.
+  - No figure when it adds nothing: names, IDs, state, or a table small enough for a human to read.
+- **One question per figure.** Put two panels in one figure only when they are read together (a
+  heatmap and its cluster sizes); otherwise draw separate files. Several plain figures beat one
+  figure of five plots. An agent must be able to read every figure: keep it near 1 MP (the 7 x 7.4
+  in, 150 dpi cell-crop grid, about 1050 x 1110 px, is the upper limit), since larger images are
+  downscaled when read and fine detail is lost.
+
+For example `get_marker` prints each cluster's `[median, pct_step, pct_table]` and draws
+`markers/<marker>.png`; `get_composition` prints each sample's share per group and draws the
+stacked bars. A view that prints a distribution or a per-cluster profile and draws nothing is a
+gap: `get_cluster --ids` prints marker levels and sample shares, and a human checking a label
+needs the box plots against the rest of the step.
 
 ## 2. Decisions
 
