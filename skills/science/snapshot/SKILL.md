@@ -115,6 +115,13 @@ live checkout, so it runs unpinned code under the parent's hooks. `agentic-syste
 
 **Git inside a snapshot.** A snapshot has no `.git`, so git walks up to the live checkout:
 `git rev-parse HEAD` there reports the checkout's commit, not the snapshot's, and `git checkout`
-changes the checkout. Code that needs its own commit reads the snapshot's folder name or
-`snapshot.yaml`. For the same reason, run `create_snapshot.sh` from the checkout; it refuses to run
-inside a snapshot.
+changes the checkout. For the same reason, run `create_snapshot.sh` from the checkout; it refuses to
+run inside a snapshot.
+
+**The commit comes from `snapshot.yaml`.** Code that needs its own commit reads the `commit` key of
+`snapshot.yaml` in its working directory, never a variable in `.env`. A project with a settings
+class loads it there as a `commit` setting. Only when there is no `snapshot.yaml` (the main
+checkout or a git worktree) does it fall back to `git rev-parse HEAD`, which in a worktree reports
+that worktree's commit. A working directory under `.snapshots/` without
+`snapshot.yaml` is an unfinished snapshot: refuse it, because git there reports the checkout's
+commit.

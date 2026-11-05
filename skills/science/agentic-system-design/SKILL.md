@@ -157,7 +157,9 @@ stacked bars; `get_cluster --ids` prints each marker's `[median, pct_step, pct_t
   config: what a function reads stays visible. Pure math primitives keep explicit arguments.
 - **Pin the code.** `init` records the git commit and refuses a dirty tree. The dirty check counts
   tracked files only (`--untracked-files=no`), so one stray file cannot block every agent. Every
-  later command refuses code of another commit.
+  later command refuses code of another commit. It reads its own commit from the `commit` key of
+  `snapshot.yaml`, and from git only in the main checkout or a git worktree (the `snapshot` skill,
+  "The commit comes from `snapshot.yaml`").
 - **Run from a snapshot.** Agents, humans with an agent's task, and the jobs they submit run from
   the snapshot of the pinned commit, never from a live checkout. The `snapshot` skill owns how:
   why, the layout in `<repo>/.snapshots/<commit>/`, the logs, and `create_snapshot.sh`. The
