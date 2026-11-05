@@ -350,5 +350,6 @@ Submission mechanics (snapshotting, canary discipline, archiving policy, account
 routing) are identical regardless of what a given project computes -- the same failure modes
 (relative paths breaking under a snapshot, a shared environment mutating under a running job, a
 hand-invoked canary missing real fan-out plumbing, a sweep archiving a live run, one account's
-fair-share tanking from unrelated jobs) recur on any project on any Slurm cluster. What does differ per cluster (its partitions, QOS,
-accounts and limits) lives in each project's `docs/hpc.md`, not here.
+fair-share tanking from unrelated jobs) recur on any project on any Slurm cluster. What does
+differ per cluster (its partitions, QOS, accounts and limits) lives in each project's
+`docs/hpc.md`, not here.
