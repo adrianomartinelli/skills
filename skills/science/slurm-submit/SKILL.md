@@ -249,7 +249,7 @@ and forget before the first `fit` run"*). Check the equivalent for any other fra
 compute. A metrics file opened in append mode (`open("a")`) will interleave the restarted run's
 rows with the original's in one file -- no error, no lost bytes, and every downstream consumer
 plots two trajectories as one curve. A non-monotonic step/iteration column is the tell; a writer
-that refuses to write over an existing artifact (`guarded_write`, `AGENTS.md` ART-3) is the cure.
+that writes the file whole instead of appending is the cure: a restart then replaces the rows.
 
 ## A CLI-override trap that bites exactly this kind of fan-out
 
