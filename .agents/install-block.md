@@ -96,7 +96,7 @@ Re-run both commands to update.
 npx skills@latest add mattpocock/skills -a <agent>  # cursor, opencode, devin, windsurf, amp, pi; omit -a to choose
 ```
 
-When the installer asks which skills to take, include `setup-matt-pocock-skills`. To update, run `npx skills@latest update`, and re-run `add` to pick up new skills.
+When the installer asks which skills to take, include `setup-personal-skills`. To update, run `npx skills@latest update`, and re-run `add` to pick up new skills.
 
 </canonical-block>
 

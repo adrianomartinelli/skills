@@ -26,7 +26,6 @@ moves the status table); write each piece where it belongs.
 - **Open work** (a deferred item, a bug found, a follow-up, an experiment to run): a GitHub issue,
   as `docs/agents/issue-tracker.md` says, with one category and one state label
   (`docs/agents/triage-labels.md`). An experiment is a sub-issue of the issue it decides.
-  Until the drafts in `docs/todo.md` are converted, add a draft there in its shape instead.
 - **A run in flight**: a comment on its experiment issue (job IDs, config, canary sizing, what went
   wrong).
 - **A finished experiment**: close its issue with a comment giving the result and the finding it

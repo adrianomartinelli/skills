@@ -22,4 +22,4 @@ Agents are welcome to help, but you post the issue, so you own it:
 - **Short.** If it does not fit on one screen, cut it.
 - **Repro first.** The steps that show the problem come before any analysis.
 - **No pasted specs.** No full proposals, plans, or rewritten `SKILL.md` files. Describe the problem; the fix is ours to design.
-- **Not your project's issues.** If your agent files the specs or tickets for your own project here, it has the wrong repo. Run `/setup-matt-pocock-skills` in your project.
+- **Not your project's issues.** If your agent files the specs or tickets for your own project here, it has the wrong repo. Run `/setup-personal-skills` in your project.

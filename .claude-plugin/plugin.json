@@ -1,6 +1,6 @@
 {
   "name": "personal-skills",
-  "version": "1.6.4",
+  "version": "1.6.5",
   "description": "Agent skills adapted for scientific and data-science work, forked from mattpocock/skills.",
   "author": {
     "name": "Adriano Martinelli",
@@ -24,7 +24,7 @@
     "./skills/engineering/grill-with-docs",
     "./skills/engineering/triage",
     "./skills/engineering/improve-codebase-architecture",
-    "./skills/engineering/setup-matt-pocock-skills",
+    "./skills/engineering/setup-personal-skills",
     "./skills/engineering/tdd",
     "./skills/engineering/to-spec",
     "./skills/engineering/to-tickets",
