@@ -33,7 +33,7 @@ deleted, delete its lines here too.
   paths class for it.
 - PTH-3: A paths class sits outside `paths.py`.
 - ART-1: Code calls `unlink`, `os.remove`, `shutil.rmtree`, `rmdir`, or `rm` on a path that can be
-  outside `OUTPUTS_DIR` (for example `data/processed/`) or that can be `OUTPUTS_DIR` itself.
+  outside `OUTPUTS_DIR` (for example under `DATA_DIR`) or that can be `OUTPUTS_DIR` itself.
 - ART-1: Code configures a third-party writer that deletes in a directory outside `OUTPUTS_DIR`, for
   example Lightning `ModelCheckpoint` with `save_top_k` other than `-1`.
 - ART-2: Code writes, moves, or deletes a path under `DATA_DIR` that the project did not create, for

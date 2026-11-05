@@ -1,6 +1,6 @@
 ---
 name: slurm-submit
-description: Job submission workflow on a Slurm cluster -- QOS/account/partition discovery proven by probe jobs, commit/snapshot/canary/fan-out sequence (canary only when jobs share a submission mechanism, e.g. a fold/seed sweep -- a single independent run skips it), fast_dev_run as a Lightning training job's own pre-submission check, snapshots through the `snapshot` skill, and account/fair-share mediation when jobs won't start. Deleting what a job produced goes through the `delete` skill. Builds on the slurm-ops skill (right-sizing, diagnostics). Use for sbatch, srun, job arrays, sweeps, "submit a job", "run on the cluster".
+description: Job submission workflow on a Slurm cluster -- QOS/account/partition discovery proven by probe jobs, commit/snapshot/canary/fan-out sequence (canary only when jobs share a submission mechanism, e.g. a fold/seed sweep -- a single independent run skips it), fast_dev_run as a Lightning training job's own pre-submission check, snapshots through the `snapshot` skill, and account/fair-share mediation when jobs won't start. Each job marks its output directory in use with an `IN_USE` file that holds the job ID. Builds on the slurm-ops skill (right-sizing, diagnostics). Use for sbatch, srun, job arrays, sweeps, "submit a job", "run on the cluster".
 ---
 
 # slurm-submit
@@ -348,17 +348,43 @@ than waiting it out on the default. Only switch to an account you're actually au
 to charge to -- when in doubt which one that is, ask rather than guess, since this is a billing
 decision, not just a scheduling one.
 
-## Deleting a job's outputs
+## Mark a job's output directory in use
 
-Call the Skill tool with "delete". It deletes anything a run wrote below `OUTPUTS_DIR`, not only
-Slurm output, and refuses every other path (`AGENTS.md` ART-1, ART-6). Before a delete, get
-liveness from `squeue`/`sacct`, not from the filesystem. A sweep over "has config.json, lacks
-summary.json" once killed a running job at 68% of a 3.25 GPU-hour run, because those files are
-written at a run's start and end and so match a live job exactly.
+A running job writes a marker file `IN_USE` into its output directory, the run root below
+`OUTPUTS_DIR`. It writes the marker before its first artifact and deletes it as its last step. The
+`delete` skill skips every path with a marker at, above or below it. A sweep over "has config.json,
+lacks summary.json" once deleted the output of a running job at 68% of a 3.25 GPU-hour run. A run
+writes those files at its start and end, so they match a live job exactly. The marker exists only
+to show a live job.
+
+The marker holds the job ID, so that an agent can find the job:
+
+```
+job_id: 123456
+job_name: train-fold0
+started: 2026-11-05T14:02:11+01:00
+```
+
+Write it in the code that creates the run root, and delete it in a `finally`. Get the job ID from a
+`Settings` field (`slurm_job_id: str | None = None` reads `SLURM_JOB_ID`, CFG-2). Write no marker
+when the field is `None`.
+
+```python
+marker = paths.root / "IN_USE"
+marker.write_text(f"job_id: {settings.slurm_job_id}\njob_name: {job_name}\nstarted: {now}\n")
+try:
+    run(cfg, paths)
+finally:
+    marker.unlink(missing_ok=True)
+```
+
+A job that Slurm kills with `SIGKILL` (out of memory, the end of the time limit) leaves a stale
+marker. `sacct -j <job_id> -X -n -o State` shows whether the job ended. A requeued job keeps its
+job ID and writes the marker again.
 
 ## Why this is a skill, not project docs
 
-Submission mechanics (snapshotting, canary discipline, deletion policy, account/fair-share
+Submission mechanics (snapshotting, canary discipline, the in-use marker, account/fair-share
 routing) are identical regardless of what a given project computes -- the same failure modes
 (relative paths breaking under a snapshot, a shared environment mutating under a running job, a
 hand-invoked canary missing real fan-out plumbing, a sweep archiving a live run, one account's
