@@ -1,9 +1,11 @@
 ---
 name: delete
-description: Delete one artifact path below `OUTPUTS_DIR` (a run, a checkpoint, a figure set) with the checks of `AGENTS.md` ART-1, ART-2 and ART-6. Use before any delete in a project with a `Settings` class. Triggers: delete or clean up runs or outputs, free disk space.
+description: Delete one artifact path below `OUTPUTS_DIR` (a run, a checkpoint, a figure set), with every check that a delete needs. `AGENTS.md` ART-6 sends each delete of an agent here. Use before any delete in a project with a `Settings` class. Triggers: delete or clean up runs or outputs, free disk space.
 ---
 
 # delete
+
+`AGENTS.md` ART-6 sends every delete that an agent does to this skill. The skill holds the checks.
 
 Everything below `OUTPUTS_DIR` is an artifact of the project's code: run identity keeps runs
 apart, and the code can write a deleted artifact again. Every other path stays: source data, the
@@ -29,7 +31,8 @@ Done when you have one path, in the user's own words.
 ## Step 2: Check the path against `OUTPUTS_DIR`
 
 Get `OUTPUTS_DIR` from the project's `Settings` class, not from the shell environment (CFG-2).
-From the project root, run this, with `<project_name>` and `<named path>` filled in:
+From the project root, run this, with `<project_name>` and `<named path>` filled in. If `Settings()`
+raises, stop and show the user the error: `Settings` refuses a missing or relative `OUTPUTS_DIR`.
 
 ```
 pixi run python - <<'EOF'
@@ -48,11 +51,8 @@ EOF
 The script follows every symlink, in `OUTPUTS_DIR` and in the target. A target that is a symlink to
 a path outside `OUTPUTS_DIR` fails. `OUTPUTS_DIR` itself fails: it is not strictly below itself.
 
-- **`OUTPUTS_DIR` is not absolute.** `Settings.outputs_dir` defaults to the relative `outputs`, and
-  a relative root resolves against the working directory (in a snapshot, inside the snapshot). Ask
-  the user to set `OUTPUTS_DIR` to an absolute path in `.env`.
-- **The path is not strictly below `OUTPUTS_DIR`**, or does not exist. Do not delete it. If it is
-  under `DATA_DIR`, it is source data (ART-2).
+If the path is not strictly below `OUTPUTS_DIR`, or does not exist, do not delete it. If the project
+sets `DATA_DIR` and the path is below it, tell the user that it is source data (ART-2).
 
 Done when the script prints one resolved path. Use this resolved path in every later step.
 
