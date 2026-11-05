@@ -1,0 +1,3 @@
+model:
+  loader: cellstats.utils.load_model
+  class_path: torch.nn.Linear
