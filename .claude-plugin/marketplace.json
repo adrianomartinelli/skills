@@ -1,15 +1,15 @@
 {
   "name": "personal",
   "owner": {
-    "name": "Matt Pocock",
-    "url": "https://www.aihero.dev"
+    "name": "Adriano Martinelli",
+    "url": "https://github.com/adrianomartinelli"
   },
-  "description": "Matt Pocock's skills for real engineering, as an installable Claude Code plugin.",
+  "description": "Personal skills for scientific and data-science work, forked from Matt Pocock's skills.",
   "plugins": [
     {
       "name": "personal-skills",
       "source": "./",
-      "description": "Matt Pocock's agent skills for real engineering (grilling, spec/ticket flows, TDD, code review, domain modelling and more).",
+      "description": "Agent skills adapted for scientific and data-science work, forked from mattpocock/skills.",
       "category": "engineering",
       "keywords": [
         "engineering",

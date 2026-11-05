@@ -1,13 +1,13 @@
 {
   "name": "personal-skills",
   "version": "1.3.2",
-  "description": "Matt Pocock's agent skills for real engineering: grilling, spec/ticket flows, TDD, code review, domain modelling and more. Plug-and-play, not vibe coding.",
+  "description": "Agent skills adapted for scientific and data-science work, forked from mattpocock/skills.",
   "author": {
-    "name": "Matt Pocock",
-    "url": "https://www.aihero.dev"
+    "name": "Adriano Martinelli",
+    "url": "https://github.com/adrianomartinelli"
   },
-  "homepage": "https://www.aihero.dev/s/skills-newsletter",
-  "repository": "https://github.com/mattpocock/skills",
+  "homepage": "https://github.com/adrianomartinelli/skills",
+  "repository": "https://github.com/adrianomartinelli/skills",
   "license": "MIT",
   "keywords": [
     "engineering",
