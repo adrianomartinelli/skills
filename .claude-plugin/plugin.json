@@ -1,6 +1,6 @@
 {
   "name": "personal-skills",
-  "version": "1.6.5",
+  "version": "1.7.0",
   "description": "Agent skills adapted for scientific and data-science work, forked from mattpocock/skills.",
   "author": {
     "name": "Adriano Martinelli",
@@ -37,6 +37,7 @@
     "./skills/engineering/codebase-design",
     "./skills/engineering/code-review",
     "./skills/engineering/pr",
+    "./skills/engineering/show-me",
     "./skills/engineering/retro",
     "./skills/engineering/wizard",
     "./skills/productivity/grill-me",
