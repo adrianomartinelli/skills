@@ -169,33 +169,39 @@ This canary/fan-out discipline is not training-specific -- it applies to any bat
 a submission mechanism (data processing, promotion, conversion). `fast_dev_run` below is narrower:
 a Lightning-specific pre-submission check for one training job, canary or not.
 
-## Wait for the job: `sbatch --wait` in the background, Monitor while it queues
+## Wait for the job: `sbatch --parsable`, then one Monitor until the job ends
 
 An agent that submits a job whose result it needs must be woken when the job starts and when it
 ends. Seen directly: agents submitted with plain `sbatch`, ended their turn, and never continued,
-because nothing was left to wake them. Use both of these, per job:
+because nothing was left to wake them.
 
-1. **The end: `sbatch --wait` as a background shell call.** It blocks until the job ends and exits
-   with the job's exit code (0 done; non-zero failed, killed for memory or time, or cancelled). A
-   background call wakes the session when it exits. Its first output line names the job ID; read
-   it from the background output file. Then `sacct -j <id>` says how the job ended.
-2. **The queue: the Monitor tool on that job ID.** `--wait` says nothing while the job is pending,
-   and a job can wait for hours (fair share, a full partition, a per-user cap). A loop that prints
-   a line while the job is pending, and ends when it leaves PENDING, wakes the session each time:
+Do not wait with `sbatch --wait` as a background shell call. A background call is killed at its
+timeout (10 min by default), and a job can wait in the queue for longer (seen 2026-11-06: three
+prepare jobs pending for over 10 min, every `--wait` call killed, the jobs still queued).
+
+1. **Submit with `sbatch --parsable`.** It prints the job ID and returns at once.
+2. **Wait with one Monitor on the job IDs.** Its loop prints a line when a job changes state and
+   exits when every job has an end state. Set its timeout to the maximum; if it expires while a
+   job is still pending or running, start it again with the same IDs.
 
    ```bash
-   while [ "$(squeue -h -j <id> -o %T)" = PENDING ]; do
-     echo "pending $(squeue -h -j <id> -o '%r start=%S')"; sleep 600
-   done; echo "left the queue: $(squeue -h -j <id> -o %T)"
+   ids=<id>,<id>; last=
+   while true; do
+     now=$(sacct -X -n -P -j $ids -o JobID,State,Reason | sort)
+     [ "$now" != "$last" ] && echo "$now" && last=$now
+     echo "$now" | grep -qE "PENDING|RUNNING|REQUEUED|SUSPENDED" || break
+     sleep 60
+   done
    ```
 
-   On each line, decide: keep waiting, or `scancel` and resubmit where it starts sooner (another
-   partition or QOS, fewer resources, CPU instead of GPU for a model fast enough there).
-   `slurm-ops` covers why a job is pending.
+   On a PENDING line, decide: keep waiting, or `scancel` and resubmit where it starts sooner
+   (another partition or QOS, fewer resources, CPU instead of GPU for a model fast enough there).
+   `slurm-ops` covers why a job is pending. When the loop exits, the `sacct` state and exit code
+   say how each job ended (COMPLETED; FAILED, OUT_OF_MEMORY, TIMEOUT or CANCELLED otherwise).
 
-For a fan-out, do both for each job. Do not use `/loop` or cron wakeups for this: a headless
-session (`claude -p`) exits when its turn ends with nothing running, before a wakeup fires; a
-background call or a Monitor keeps it alive (tested 2026-11-06).
+For a fan-out, put every job ID in the one Monitor. Do not use `/loop` or cron wakeups for this: a
+headless session (`claude -p`) exits when its turn ends with nothing running, before a wakeup
+fires; a running Monitor keeps it alive (tested 2026-11-06).
 
 ## `fast_dev_run`: a Lightning training job's own pre-submission check
 
