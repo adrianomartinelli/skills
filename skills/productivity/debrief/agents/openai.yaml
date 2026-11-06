@@ -1,0 +1,3 @@
+interface:
+  display_name: "Debrief"
+  short_description: "Review what the agent assumed, decided and fixed while you were away"

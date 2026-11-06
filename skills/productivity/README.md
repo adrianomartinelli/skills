@@ -16,6 +16,7 @@ Reachable only when you type them (Claude Code: `disable-model-invocation: true`
 
 Model- or user-reachable (rich trigger phrasing so the model can reach for them).
 
+- **[debrief](./debrief/SKILL.md)**: Review the work done while you were away: every deviation, assumption, decision, problem and fix, unverified claim, pending job and open question as one item to accept, reject, or file as an issue. The agent keeps a ledger in `WORKTREE.md` as it works.
 - **[grilling](./grilling/SKILL.md)**: Interview the user relentlessly about a plan, decision, or idea until every branch of the design tree is resolved.
 - **[mobile](./mobile/SKILL.md)**: Reply as tappable cards (assumptions to confirm, decisions to keep or change, issues to track, questions with options) for a user on a phone. Sticky for the session, and it carries grilling rounds too.
 - **[writing-for-agents](./writing-for-agents/SKILL.md)**: Writing documents for agents: skills, AGENTS.md/CLAUDE.md, and any doc an agent reaches by a pointer.

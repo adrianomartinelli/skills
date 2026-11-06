@@ -10,6 +10,8 @@ When you follow a session from your phone and long prose replies are hard to rea
 
 **Does it work with grilling?** Yes. Grilling still decides what to ask; `mobile` decides how. Each grilling round becomes a round of cards, and open questions stay open through "Other".
 
+**What about the work done while I was away?** That is [debrief](https://aihero.dev/skills-debrief): it picks the items (deviations, assumptions, decisions, problems, open questions), and `mobile` shows them as cards.
+
 **How do I turn it off?** Say "desk mode" or "stop mobile".
 
 **What if there are more than four cards?** The agent makes several question calls in one reply, most important first.

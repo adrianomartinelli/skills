@@ -40,3 +40,5 @@ A question with more than three real options keeps the three strongest; the user
 ## With other skills
 
 The other skill decides *what* to ask; this skill decides *how*. A grilling round is one round of cards: each frontier question is a Question card with the grilling recommendation as the first option. Open-ended grilling questions stay open: keep options short and let "Other" carry the real answer. Facts stay the agent's job, as in grilling.
+
+After work the user did not watch, `debrief` decides the items: each item is one card, its answers are the options, and its kind is the header.
