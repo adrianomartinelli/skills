@@ -31,6 +31,8 @@ Everything lands on one branch. Each implementer:
 
 The tracker decides whether a pull request exists at all. If your tracker closes work through PRs, or you ask for one, the skill opens a draft PR after the first merge and marks it ready at the end. Otherwise the run stops on the integration branch with every ticket resolved the way your tracker closes work, which works fully offline against a local markdown tracker.
 
+Each implementer also lists its deviations, assumptions, decisions and workarounds in its report. The orchestrator collects them in one [debrief](https://aihero.dev/skills-debrief) ledger on the integration branch and walks you through them at the end, so a run you did not watch leaves nothing you have not seen.
+
 Implementers talk to the orchestrator through [context pointers](https://www.aihero.dev/ai-coding-dictionary/context-pointer) (the spec, the ticket, shared exploration notes, earlier commits) rather than pasted summaries. This keeps each subagent's prompt small and leaves room in the orchestrator's window for the graph.
 
 ## Common questions
