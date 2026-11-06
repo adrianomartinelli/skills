@@ -1,6 +1,6 @@
 ---
 name: slurm-ops
-description: Cluster resource right-sizing and health/queue diagnostics -- canary measurement before fan-out, inspecting overall queue state (which partitions are full, who's running/pending what, why jobs are stuck cluster-wide), triaging a job that will not start, and stopping a run that is already going. Pair with slurm-submit, which owns how a job is actually submitted. Use for "how much memory/time", "why is my job pending", sizing an sbatch, "cancel this job", "kill the run", "stop a run early".
+description: Cluster resource right-sizing and health/queue diagnostics -- canary measurement before fan-out, inspecting overall queue state (which partitions are full, who's running/pending what, why jobs are stuck cluster-wide), triaging a job that will not start, and stopping a run that is already going. Pair with slurm-submit, which owns how a job is actually submitted. Use for "how much memory/time", "why is my job pending", sizing an sbatch, "how many jobs can I run at once", "cancel this job", "kill the run", "stop a run early".
 ---
 
 # slurm-ops
@@ -53,6 +53,35 @@ Common reasons: `QOSGrpNodeLimit`/`QOSGrpCpuLimit` (an account/QOS cap, not a ha
 see `slurm-submit` for switching accounts), `Dependency`/`DependencyNeverSatisfied` (waiting on
 another job, possibly one that already failed), `Priority` (schedulable, just ranked behind other
 jobs), `Resources`/`Nodes_required` (genuinely waiting for hardware).
+
+## User limits: how many jobs per user each QOS / partition allows
+
+Per-user caps live on the QOS, not on the partition. A partition limits jobs per user only
+through its partition QOS (`QoS=` in `scontrol show partition`). Your association can add its own
+caps on top. List all three; the tightest one wins:
+
+```bash
+# per-QOS caps: running jobs (MaxJobsPU), queued+running (MaxSubmitPU), resources (MaxTRESPU)
+sacctmgr show qos format=Name%30,MaxJobsPU,MaxSubmitPU,MaxTRESPU%40,MaxWall,Flags%30 -p
+# partition -> partition QOS (its limits apply to every job in that partition)
+scontrol show partition | grep -oE "PartitionName=[^ ]*|QoS=[^ ]*" | paste - -
+# association caps for you (empty = no cap at that level)
+sacctmgr show assoc user=$USER format=account,partition,qos%40,maxjobs,maxsubmit,maxtres%30 -p
+# your current usage against those limits, per QOS
+squeue -u $USER -h -o "%q %t" | sort | uniq -c
+```
+
+Read the output as a table of QOS -> max concurrent running jobs per user (`MaxJobsPU`). An empty
+field means no cap at that level, not unlimited overall: check the partition QOS and the
+association too. `MaxTRESPU` often binds first (e.g. `gres/gpu=4` caps you at 4 one-GPU jobs even
+with `MaxJobsPU=10`). When a partition QOS and the job's QOS both set a limit, the partition QOS
+wins unless the job QOS has the `OverPartQOS` flag. Jobs held by these caps show as
+`QOSMaxJobsPerUserLimit`, `QOSMaxGRESPerUser`, `AssocMaxJobsLimit` in `squeue -t PD -o "%r"`.
+
+If `sacctmgr` shows nothing (some sites hide it via `PrivateData`), try
+`scontrol show assoc_mgr users=$USER flags=qos,assoc`, which also shows current usage next to each
+limit as `Limit(Used)`. Record the result in the project's `docs/hpc.md` with the rest of the
+inventory (see `slurm-submit`), not in this skill.
 
 ## Stopping a run: graceful before `scancel`
 
