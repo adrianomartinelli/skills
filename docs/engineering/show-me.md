@@ -17,9 +17,9 @@ Type `/show-me`, or the [agent](https://www.aihero.dev/ai-coding-dictionary/agen
 
 ## The contract view
 
-The page is built around one diagram: inputs on the left, the component in the middle, outputs on the right. Each box links to a section that unfolds the real thing: the config model as a table plus the committed config file, each artifact's layout and structure. Below it come the flow (callers, callees, side effects), the core logic as pseudocode, a list of edge cases labelled `raises`, `skips`, `defaults` or `limit`, and the three to five places to read next.
+The page reads from whole to detail. Only the overview is open: one diagram with inputs on the left, the component in the middle and outputs on the right, a lifecycle diagram when the component moves through states or steps, and a link to every section. Each box and link opens a collapsed section with the real thing: the config model as a table plus the committed config file, how a run executes, the innermost function as highlighted real code, each artifact's layout and structure, and a list of edge cases labelled `raises`, `skips`, `defaults` or `limit`.
 
-The page reads top to bottom with every fold closed. The folds hold the long material (a forty-field config, a full schema), so the page stays short until you need the detail.
+Ask a follow-up question and the answer goes into the same page, in the section it belongs to, and the page is republished. The page grows into the record of what you asked about the component.
 
 ## It's working if
 
@@ -27,6 +27,7 @@ The page reads top to bottom with every fold closed. The folds hold the long mat
 - The config and artifact examples carry a source label, and the labelled files exist.
 - The edge-case list names silent defaults and skips, not only the errors.
 - The reply in the chat is a few lines and a link, not the explanation itself.
+- You understand the component from the overview alone, and open a section only for the detail you need.
 
 ## Where it fits
 
