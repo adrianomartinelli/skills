@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 Implement the work described by the user in the spec or tickets.
 
-Call the Skill tool with "debrief" before you start, and keep its ledger while you work.
+Keep the session's debrief ledger while you work (`debrief` skill).
 
 If the user passes a ticket reference, fetch it from the issue tracker and state its title before starting. If the reference is ambiguous, ask.
 

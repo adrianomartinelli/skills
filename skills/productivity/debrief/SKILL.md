@@ -1,29 +1,27 @@
 ---
 name: debrief
-description: Debrief the user on work done while they were away, one item per deviation, assumption, decision, problem, unverified claim, outward action, pending job and open question, each with options to accept, reject or file an issue. Use when you start work the user will not watch (to keep the ledger), when an unattended run ends, and when the user returns ("I'm back", "what happened", "debrief").
+description: Debrief the user on work done while they were away, one item per deviation, assumption, decision, problem, unverified claim, outward action, pending job and open question, each with options to accept, reject or file an issue. Use when an unattended run ends, when the user returns ("I'm back", "what happened", "debrief"), and for the format of the session's ledger in `.ledgers/`.
 ---
 
 The user was **away** while you worked. You made choices they did not see. A **debrief** puts each one in front of them as one **item** with a short set of answers, so they can confirm, undo or track it in a few taps. This skill decides *what* the items are; how they are shown is the job of the reply mode (`mobile` renders them as cards).
 
 ## While working: keep the ledger
 
-Write the ledger in `WORKTREE.md`, under a `## Debrief ledger` heading after the branch log. No `WORKTREE.md` in the repository: use `$TMPDIR/debrief-${CLAUDE_SESSION_ID}.md`. Commit the ledger with the work it describes.
+The ledger of a session is `.ledgers/<session-id>.json` in the repository root (this session: `.ledgers/${CLAUDE_SESSION_ID}.json`). It is a JSON array; `.ledgers/` is gitignored. Add one entry **at the moment** it happens, never from memory at the end:
 
-Add one line **at the moment** it happens, never from memory at the end:
-
-```
-- <kind> | <one line> | if wrong: <cost> | <evidence: commit, file:line, job ID> | ${CLAUDE_SESSION_ID}
+```json
+{"time": "<ISO 8601>", "kind": "<kind>", "item": "<one line>", "if_wrong": "<cost>", "evidence": "<commit, file:line, job ID>", "answer": null}
 ```
 
-`<kind>` is one of the kinds in the table below. "If wrong" names what a "no" from the user costs: the runs to redo, the files to revert, the results that change. Done when every choice the user did not dictate has a line.
+`kind` is one of the kinds in the table below. `if_wrong` names what a "no" from the user costs: the runs to redo, the files to revert, the results that change. Done when every choice the user did not dictate has an entry.
 
 ## On return: the debrief
 
-1. **Gather.** Read the ledger lines of the session, `git log` of the session, and the current state of everything still pending (`squeue`, `git status`, unpushed branches). Check a fact before you report it.
-2. **Sweep for implicit assumptions.** For each, ask if you took it as true without saying so: the reading of the request, the scope, the data or cohort, every default and threshold, the branch and commit, what "done" means. Add each one you find as an `assumption` item.
+1. **Gather.** Read the open entries (`"answer": null`) of this session's ledger, or of every ledger in `.ledgers/` when the user asks for other sessions (label each item with its session). Read `git log` of those sessions and the current state of everything still pending (`squeue`, `git status`, unpushed branches). Check a fact before you report it.
+2. **Sweep for implicit assumptions.** For each, ask if you took it as true without saying so: the reading of the request, the scope, the data or cohort, every default and threshold, the branch and commit, what "done" means. Add each one you find as an `assumption` entry.
 3. **Rank.** Order by kind as in the table, and inside a kind by the cost of a "no". Fold the low-cost items into one batch item: "Accept these N low-impact items: <list>", answers Accept all · One by one.
 4. **Ask.** One item per idea, self-contained, its evidence held back for "More context". Every item also takes a free-text answer.
-5. **Act on each answer**, then delete its ledger line. Done when the ledger of the session is empty.
+5. **Act on each answer**, then write it into the entry's `answer` (with the issue number or ADR path it produced). Done when no entry you gathered is open.
 
 | Kind | Item | Answers |
 |---|---|---|
