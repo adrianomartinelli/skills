@@ -20,7 +20,7 @@ Communication to and from subagents should be sparse. Communicate primarily thro
 
 ## Steps
 
-1. Read the spec and tickets to understand the task graph. Keep the session's debrief ledger (`debrief` skill) for the whole run.
+1. Read the spec and tickets to understand the task graph.
 
 2. (optional) Use an **exploration subagent** to conduct any exploration required by the tickets - relevant codebase files or external documentation. Ensure the exploration subagent can save files - it should save its markdown notes in a directory outside the repo, accessible by all future subagents. This lets **implementer subagents** focus on implementation rather than exploration.
 
@@ -30,7 +30,7 @@ Communication to and from subagents should be sparse. Communicate primarily thro
    - confirms its worktree is based on the integration branch before starting, and resets onto it if not;
    - calls the Skill tool with `tdd` to build the ticket;
    - merges the integration branch tip into its own branch before reporting done;
-   - lists in its report every deviation from the ticket, assumption, decision and workaround, as debrief ledger entries. It never writes a ledger itself; you add the entries to yours.
+   - lists in its report every deviation from the ticket, assumption, decision and workaround, as debrief ledger entries. Its worktree is deleted at cleanup, so it never writes a ledger itself; you add the entries to yours.
 
 5. Once an **implementer subagent** completes, merge its work to the integration branch with a **merger subagent**.
 
@@ -41,5 +41,3 @@ Communication to and from subagents should be sparse. Communicate primarily thro
 8. If a draft PR exists, mark it ready for review. Otherwise, resolve each ticket the way the issue tracker closes work, and report the integration branch.
 
 9. Clean up all **implementer subagent** worktrees.
-
-10. Debrief the user.
