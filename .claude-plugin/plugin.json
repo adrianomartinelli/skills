@@ -1,6 +1,6 @@
 {
   "name": "personal-skills",
-  "version": "1.8.3",
+  "version": "1.9.0",
   "description": "Agent skills adapted for scientific and data-science work, forked from mattpocock/skills.",
   "author": {
     "name": "Adriano Martinelli",
@@ -60,6 +60,7 @@
     "./skills/science/slurm-ops",
     "./skills/science/slurm-submit",
     "./skills/science/snapshot",
+    "./skills/science/sync-with-init",
     "./skills/science/thermo-nuclear-code-quality-review"
   ]
 }
