@@ -1,86 +1,56 @@
 # The show-me page
 
-One self-contained HTML file. Tailwind and Mermaid come from CDNs at pinned versions; everything else is inline. Interactivity is native HTML: `<details>` to fold a config or a schema open, and anchor links from the contract diagram to the section that explains each box. The page reads top to bottom with every fold closed.
+One self-contained HTML page. It reads from **whole to detail**: the overview is the only open section, and every other section is a fold the reader opens from a link in the overview. When the harness publishes pages with its own artifact or preview tool, that tool's page contract wins over everything below (its skeleton, theme tokens, allowed CDNs, built-in Mermaid); keep the structure and the patterns, and drop what the contract forbids.
 
-## Scaffold
+## Structure
 
-```html
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{component}}</title>
-    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
-    <script type="module">
-      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs";
-      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
-    </script>
-  </head>
-  <body class="bg-stone-50 text-slate-900">
-    <main class="max-w-5xl mx-auto px-4 py-10 space-y-10">
-      <header>...</header>
-      <section id="contract">...</section>
-      <section id="config">...</section>
-      <section id="outputs">...</section>
-      <section id="flow">...</section>
-      <section id="logic">...</section>
-      <section id="edges">...</section>
-      <section id="read-next">...</section>
-    </main>
-  </body>
-</html>
+```text
+header            component, entry point file:line, the commit it was read at, its job in one sentence
+overview          always open: the contract diagram, the lifecycle (if any), the drill-down index
+[expand all / collapse all]
+<details> × N     one per section below, closed; the summary is the heading plus a one-line description
 ```
+
+The overview answers "what is this and how does it fit" without opening anything. Every box of the contract diagram and every entry of the drill-down index is an `<a href="#section">`; a click opens that fold (and any fold around it) and scrolls to it.
 
 ## Sections
 
-In this order. Drop a section that has nothing to say for this component (a pure function writes no artifacts); never pad one.
+Drop a section that has nothing to say for this component (a pure function writes no artifacts); never pad one.
 
 | Section | Holds |
 | --- | --- |
-| Header | Component name, entry point `file:line`, the commit it was read at, and its job in one sentence. |
-| Contract | The centrepiece: inputs on the left, the component in the middle, outputs on the right. Each box links to its section below. |
-| Config and arguments | The signature or CLI, then the config model as a table (field, type, default, meaning; computed vs execution-only), then the real config file in a fold. |
-| Outputs | The return value, the artifact layout as a file tree, and one fold per artifact with its real structure (schema plus a few rows, keys, shapes). |
-| Flow | How it interacts with the system: callers, callees, side effects, as one Mermaid sequence or flowchart. |
-| Core logic | Pseudocode or a call tree of the steps that matter, each step with `file:line`. |
-| Edge cases and limitations | A list: the condition, what happens, `file:line`. Label each `raises`, `skips`, `defaults` or `limit`. |
-| Read next | The three to five `file:line` locations to open first, each with a one-line reason. |
+| Overview | The contract diagram: inputs left, the component middle, outputs right. The lifecycle, when the component has states or steps (an agent workflow, a state machine, a multi-stage run): a Mermaid `stateDiagram` of what moves it on. The drill-down index: one link per section with a one-line description. |
+| Config and arguments | The signature or CLI, the config model as a table (field, type, default, meaning; computed vs execution-only), the real config file in a fold. |
+| Inputs | What it reads and who produces it, each with its real structure in a fold. |
+| Execution | How it interacts with the system: callers, callees, processes, side effects, as one Mermaid sequence diagram, then the core code. |
+| The core unit | The innermost function that does the work, as real code with comments, then a table of what it writes and what a retry does. |
+| Outputs | The return value, the artifact layout as a file tree, one fold per artifact with its real structure (schema plus a few rows, keys, shapes). |
+| Edge cases and limitations | One row per case: a label (`raises`, `defaults`, `skips`, `limit`), what happens, `file:line`. Then "Read next": three to five `file:line` locations with a one-line reason. |
+| Follow-up questions | When the user asks about the page, answer in the section the question belongs to, as a marked answer block, republish the same page, and mark the answered sections in the drill-down index. |
 
 ## Patterns
 
-**Contract diagram.** Three columns of boxes in a CSS grid, the component box thick and dark, the input and output boxes light. Each box is an `<a href="#...">` to its section, with the source label (`configs/...`, `defaults`, `from code`) in small type underneath. Stack the columns on narrow screens.
+**Fold.** Sections are `<details class="sec">`; inside them, a real file, a long schema or a secondary function is a nested `<details>` whose summary already says what it holds (`cells.parquet: 17,341 cells × 51 columns`) and carries its source label (`configs/...`, `defaults`, `from code`).
 
-```html
-<div class="grid md:grid-cols-[1fr_auto_1fr] gap-4 items-center">
-  <div class="space-y-2">
-    <a href="#config" class="block rounded border bg-white p-3 hover:border-indigo-500">
-      <div class="text-xs uppercase tracking-wider text-slate-500">config</div>
-      <div class="font-mono text-sm">SegmentConfig</div>
-      <div class="text-xs text-slate-400">configs/segment/pilot.yaml</div>
-    </a>
-  </div>
-  <div class="rounded-lg bg-slate-900 text-white p-4 font-mono">run_segment()</div>
-  <div class="space-y-2">...</div>
-</div>
+**Code.** Every code excerpt, config file, table sample and JSON is a `<pre><code class="language-…">` block with syntax highlighting: highlight.js 11.9.0 from cdnjs (`highlight.min.js`, which covers python, yaml, json, bash) and a few `.hljs-*` colour rules of your own. Show the real code, trimmed to the lines that matter, with the `file:line` of the function in a comment on its first line and a comment on each line that needs one. Pseudocode only where the real code is spread over many functions.
+
+**Answer block.** A question the user asked gets a block with the question as its first line, the answer in plain prose, then the code that proves it. Questions about *why* code is split or arranged a certain way are answered from the constraint that forces it (an import that cannot happen, a version pin, a scheduler limit), with the `file:line` or config line that states it.
+
+**Edge-case list.** One row per case, its label as a coloured badge (`raises` red, `defaults` and `skips` amber, `limit` grey), so a silent default stands out from a loud error.
+
+**Script.** The only script: highlight the code, open the fold an anchor link targets (and its ancestors), expand all and collapse all, and open the fold named in `location.hash` on load.
+
+```js
+function openTarget(id) {
+  const el = document.getElementById(id);
+  for (let n = el; n; n = n.parentElement) if (n.tagName === "DETAILS") n.open = true;
+  el?.scrollIntoView({ block: "start" });
+}
 ```
-
-**Fold.** A real file or a long schema goes behind `<details>`, with a one-line summary that already says what it holds:
-
-```html
-<details class="rounded border bg-white">
-  <summary class="cursor-pointer p-3 font-mono text-sm">cells.parquet: 14 columns, one row per cell</summary>
-  <pre class="overflow-x-auto p-3 text-xs">...</pre>
-</details>
-```
-
-**Field table.** Highlight the fields the logic branches on; grey out the execution-only ones.
-
-**Edge-case list.** One row per case, its label as a coloured badge (`raises` red, `skips` and `defaults` amber, `limit` slate), so a silent default stands out from a loud error.
 
 ## Style
 
-- Plain, schematic, generous whitespace. One accent colour (indigo), red and amber only for edge-case badges.
+- Plain and schematic, generous whitespace, one accent colour; red and amber only for edge-case badges. Take the accent from the subject where it has a convention (a figure's colour code, a domain's standard palette).
 - Monospace for every identifier, path and value. Use the project's own names from `GLOSSARY.md` where it has one.
 - `file:line` references in small grey monospace after the text they support.
-- No horizontal page scroll at phone width: code blocks scroll inside their own box.
+- No horizontal page scroll at phone width: code blocks and tables scroll inside their own box.

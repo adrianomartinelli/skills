@@ -19,7 +19,7 @@ Done when the entry point is a file and symbol you can open.
 
 ## 2. Trace the contract
 
-Read the entry point and follow the calls until every input and every output ends at the code that parses or writes it. When the trace spans more than about five files, dispatch an Explore subagent with a fresh context window for the reading and keep only its file:line findings.
+Read the entry point and follow the calls until every input and every output ends at the code that parses or writes it. Read the code yourself: edge cases and `file:line` references need the full text, not excerpts. When you do not know which files hold the component, dispatch an Explore subagent with a fresh context window to locate them, then read what it names.
 
 Collect, each with its `file:line`:
 
@@ -42,7 +42,7 @@ Done when every example on the page is labelled with its source: a file path, `d
 
 ## 4. Write the page
 
-Write one self-contained HTML file outside the repo: the harness scratchpad if it has one, otherwise `$TMPDIR` (fall back to `/tmp`), as `show-me-<component>-<timestamp>.html`. [HTML.md](HTML.md) holds the scaffold, the sections and the interactive patterns. Every section is short; the visuals carry the explanation, and the prose is a sentence or two beside each visual.
+Write one self-contained HTML file outside the repo: the harness scratchpad if it has one, otherwise `$TMPDIR` (fall back to `/tmp`), as `show-me-<component>-<timestamp>.html`. [HTML.md](HTML.md) holds the structure, the sections and the interactive patterns. The page reads from whole to detail: an open overview (the contract, the lifecycle, links to every section), then every section as a closed fold. Code is real code in highlighted blocks. Every section is short; the visuals carry the explanation, and the prose is a sentence or two beside each visual.
 
 Keep only the arguments, fields, calls and files that bear on the user's question. A config with forty fields shows the handful that drive the logic, and links the model's `file:line` for the rest.
 
@@ -51,6 +51,8 @@ Done when every claim on the page that the user could check has a `file:line`, a
 ## 5. Present
 
 Open the page for the user (`xdg-open` on Linux, `open` on macOS, `start` on Windows), or publish it with the harness's artifact or preview tool when it has one. Give the absolute path or link, and a reply of a few lines: the component's job in one sentence and its contract as a one-line sketch (`config + inputs -> component -> return + artifacts`).
+
+A follow-up question about the component goes into the same page: answer it in the section it belongs to, republish to the same path or link, and give the short answer in the reply.
 
 ## Visual menu
 
