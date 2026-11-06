@@ -1,4 +1,4 @@
-"""Delete paths strictly below OUTPUTS_DIR or <repo>/.snapshots/; refuse every other path.
+"""Delete paths strictly below OUTPUTS_DIR, .snapshots/ or .envs/; refuse every other path.
 
 Run from the project root: `pixi run python <this dir>/delete.py [--check] <path> [<path> ...]`.
 OUTPUTS_DIR and DATA_DIR come from the project's `.env` (python-dotenv, a pydantic-settings dependency).
@@ -36,7 +36,8 @@ def main():
     assert load_dotenv(".env"), f"no .env in {Path.cwd()}: run from the project root"
     outputs = Path(os.path.expandvars(os.environ.get("OUTPUTS_DIR", ""))).expanduser()
     assert outputs.is_absolute(), f"OUTPUTS_DIR is missing or not absolute: {outputs}"
-    bases = [outputs.resolve(strict=True), (Path.cwd() / ".snapshots").resolve()]
+    repo_roots = [(Path.cwd() / d).resolve() for d in (".snapshots", ".envs")]
+    bases = [outputs.resolve(strict=True), *repo_roots]
     data = os.environ.get("DATA_DIR")
     data = Path(os.path.expandvars(data)).expanduser().resolve() if data else None
 
