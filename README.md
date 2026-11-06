@@ -256,4 +256,5 @@ General workflow tools, not code-specific.
 **Model-invoked**
 
 - **[grilling](./skills/productivity/grilling/SKILL.md)**: Interview the user relentlessly about a plan, decision, or idea until every branch of the design tree is resolved. The reusable interview primitive behind `grill-me`, `grill-with-docs`, `triage`, `wayfinder` and `improve-codebase-architecture`.
+- **[mobile](./skills/productivity/mobile/SKILL.md)**: Reply as tappable cards (assumptions to confirm, decisions to keep or change, issues to track, questions with options) for a user on a phone. Sticky for the session, and it carries grilling rounds too.
 - **[writing-for-agents](./skills/productivity/writing-for-agents/SKILL.md)**: Writing documents for agents: skills, AGENTS.md/CLAUDE.md, and any doc an agent reaches by a pointer.
