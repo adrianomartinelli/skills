@@ -57,8 +57,19 @@ request model (`AGENTS.md`, CFG-7):
   2. a detail command for named items (`--ids`)
   3. flags that add columns where they are needed
 
-  For example `get_clusters`, then `get_cluster --ids`, and `--markers` to add columns. Bound the
-  row count. Truncated output says how many rows it dropped and which flag shows them.
+  For example `get_clusters`, then `get_cluster --ids`, and `--markers` to add columns.
+  - **The default is what the next step needs.** A view that prints the same large block on every
+    call teaches the agent to skip its output, and to try options that do not exist. `status`
+    prints state, `next`, `last_run`, counts and names, never a config dump: one `get_config` view
+    prints the config.
+  - **Attention rows, not pages.** An overview shows the rows that need a decision (flagged,
+    undecided, stale); a table that fits under the cap shows every row. `--ids` shows named rows,
+    one `--all` flag every row. No offset: an agent that pages lacked the right default.
+  - **One cap, always announced.** One `--limit` default for every view, lifted by `--all`. Every
+    cut table or list, also inside a detail view, says how many rows it dropped and which flag
+    shows them.
+  - **One name per concept.** `--ids` always selects the view's own rows, in every view of every
+    workflow. A flag name has one type everywhere.
 - **Reproducible evidence.** A `get_*` prints the same output for the same artifact, arguments and
   commit. Inspection never requires an edit of fixed config. When the decision is "choose k", a
   `get_* --k` shows the result of any k (counts, a gallery).
@@ -375,6 +386,9 @@ means in a workflow, because a workflow built on other tools loses the guarantee
 | A file written before the slow part of a job blocks every retry | Work in progress is rewritten, and a unit is done by its last file |
 | Parallel agents in one scratchpad run each other's helpers | Own folder only, no scratch space |
 | Every row of every table printed | Overview, then `--ids`, then flags that add columns |
+| `status` reprints every candidate's config on each call; the agent tries `--limit 0` to quiet it | `status` prints state and names; a `get_config` view prints the config |
+| A capped list of 112 ROIs; the agent tries a non-existent `--offset` to page | Attention rows by default, `--ids` and `--all` for the rest |
+| `ids`, `channel`, `marker`, `rois` for the same selection; a limit of 20 to 60 per view | One flag name per concept, one cap default |
 | A threshold or candidate sweep in config that nobody chose from evidence | An owner in the stage spec: fixed with a reason, or an agent decision with a view |
 | Commands documented with shell variables and chains | One literal invocation per call |
 | A stray untracked file blocks the commit check of every agent | Count tracked files only |
