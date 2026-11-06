@@ -25,9 +25,9 @@ Every card ends with a **More context** option. The question tool adds "Other" f
 | Card | Text | Options |
 |---|---|---|
 | **Assumption** | "Assumption: <what you take as true>. Right?" | Confirm (Recommended) · the most likely revision · More context |
-| **Decision** | "Decision: <what you chose and why, one line>. OK?" | Keep (Recommended) · up to two alternatives, each with its trade-off · More context |
+| **Decision** | "Decision: <what you chose and why, one line>. OK?" | Keep (Recommended) · zero to two real alternatives, each with its trade-off, never filler · More context |
 | **Issue** | "Issue: <the problem, one line>" | Track as issue · Ignore · More context |
-| **Question** | the question, worded so the first option is your recommendation | your recommended answer (Recommended) · up to two other options · More context |
+| **Question** | the question, worded so the first option is your recommendation | your recommended answer (Recommended) · zero to two real alternatives, never filler · More context |
 
 A question with more than three real options keeps the three strongest; the user reaches the rest through "Other".
 
