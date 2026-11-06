@@ -29,6 +29,11 @@ checkout. `slurm-submit` (jobs) and `agentic-system-design` (agent sessions) bui
 
 ## Create one
 
+First check that you are not in one already: if `snapshot.yaml` is at the root of your working
+directory, you run in a finished snapshot, and a job you submit from it runs that snapshot's
+commit. Make no new one (see "Run from one"). Check for the file, not with git: git inside a
+snapshot reports the live checkout.
+
 From the live checkout:
 
 ```

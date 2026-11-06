@@ -95,7 +95,14 @@ the project's `docs/hpc.md`, built by the steps here.
 > not when it was submitted, so commits that land during the queue wait silently change what it
 > runs. Steps 1 and 2 below are the fix.
 
-Combines `slurm-ops`'s "canary before fan-out" with the `snapshot` skill into one recipe:
+Combines `slurm-ops`'s "canary before fan-out" with the `snapshot` skill into one recipe.
+
+**Already in a snapshot? Then skip steps 1 and 2.** If `snapshot.yaml` is at the root of your
+working directory, you run in a finished snapshot (a pinned agent session, a job's own working
+directory): submit from it with `--chdir=<that directory>`. The job then runs exactly the commit
+you run, so it is already pinned, and `create_snapshot.sh` refuses to run there
+anyway. Detect it by `snapshot.yaml`, never by git: a snapshot has no `.git`, so git walks up to
+the live checkout and reports the checkout's commit and status, not the snapshot's.
 
 1. **Commit** whatever the job will run. A snapshot extracts a commit, so uncommitted work is
    simply absent from the job.
@@ -161,6 +168,34 @@ Combines `slurm-ops`'s "canary before fan-out" with the `snapshot` skill into on
 This canary/fan-out discipline is not training-specific -- it applies to any batch of jobs sharing
 a submission mechanism (data processing, promotion, conversion). `fast_dev_run` below is narrower:
 a Lightning-specific pre-submission check for one training job, canary or not.
+
+## Wait for the job: `sbatch --wait` in the background, Monitor while it queues
+
+An agent that submits a job whose result it needs must be woken when the job starts and when it
+ends. Seen directly: agents submitted with plain `sbatch`, ended their turn, and never continued,
+because nothing was left to wake them. Use both of these, per job:
+
+1. **The end: `sbatch --wait` as a background shell call.** It blocks until the job ends and exits
+   with the job's exit code (0 done; non-zero failed, killed for memory or time, or cancelled). A
+   background call wakes the session when it exits. Its first output line names the job ID; read
+   it from the background output file. Then `sacct -j <id>` says how the job ended.
+2. **The queue: the Monitor tool on that job ID.** `--wait` says nothing while the job is pending,
+   and a job can wait for hours (fair share, a full partition, a per-user cap). A loop that prints
+   a line while the job is pending, and ends when it leaves PENDING, wakes the session each time:
+
+   ```bash
+   while [ "$(squeue -h -j <id> -o %T)" = PENDING ]; do
+     echo "pending $(squeue -h -j <id> -o '%r start=%S')"; sleep 600
+   done; echo "left the queue: $(squeue -h -j <id> -o %T)"
+   ```
+
+   On each line, decide: keep waiting, or `scancel` and resubmit where it starts sooner (another
+   partition or QOS, fewer resources, CPU instead of GPU for a model fast enough there).
+   `slurm-ops` covers why a job is pending.
+
+For a fan-out, do both for each job. Do not use `/loop` or cron wakeups for this: a headless
+session (`claude -p`) exits when its turn ends with nothing running, before a wakeup fires; a
+background call or a Monitor keeps it alive (tested 2026-11-06).
 
 ## `fast_dev_run`: a Lightning training job's own pre-submission check
 
