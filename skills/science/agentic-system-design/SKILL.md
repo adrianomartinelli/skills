@@ -7,8 +7,9 @@ description: How to design a workflow that agents operate. Covers commands that 
 
 The authority for how a workflow that agents operate is built. `AGENTS.md` governs code, config,
 paths, identity and artifacts in general. This skill builds on it and does not restate it. It
-governs what an agent sees, calls and may change. How to *read* the views of one workflow is the
-skill of that workflow.
+governs what an agent sees, calls and may change. The `contract-design` skill governs the
+boundaries between workflows and the contracts that cross them. How to *read* the
+views of one workflow is the skill of that workflow.
 
 Design for the parts that matter: the loop below, the decision contract and agent isolation. Build
 only the commands and checks that something uses now. Real use (feedback, log review) decides what
@@ -147,11 +148,11 @@ stacked bars; `get_cluster --ids` prints each marker's `[median, pct_step, pct_t
 - **Every parameter has an owner.** A parameter is either fixed by a human, with a comment that
   says why, or an agent decision with a view and a `set_*` command. A threshold in config without
   either is a gap. Find it in the stage spec (section 8), not in a review.
-- **Inputs enter through a build command.** It validates the input (keys, columns, dtypes, NaN,
-  value ranges). Then it writes a shared, read-only input folder once, with the tables and a
-  `config.yaml`. The `config.yaml` holds the sha256 of each table and the provenance: the upstream
-  workflow, the decision file applied and the commit. All agents of a stage read the same built
-  input. A stage hands over to the next stage only through the build command of the next stage.
+- **Inputs enter through a build command.** It validates every artifact it reads against that
+  artifact's schema and checks the key relations between them. Then it writes the input's manifest
+  once: the files it refers to, the sha256 of each, and the provenance (producer, decisions
+  applied, commit). A stage hands over to the next stage only through the build command of the
+  next stage. The `contract-design` skill gives the principles behind the build.
 - **Hash at the boundary.** Hash inputs where they enter (the build). Downstream, run identities
   are enough. Do not hash every file a command reads.
 - **Method parameters are identity.** Every parameter that changes a number an agent decides on is
@@ -184,9 +185,8 @@ stacked bars; `get_cluster --ids` prints each marker's `[median, pct_step, pct_t
 ```
 <repo>/.snapshots/<commit>/     # code and frozen environment of one commit (create_snapshot)
 <outputs>/<workflow>/
-  inputs/<input>/               # built once, read-only, shared by all agents
-    <tables>.parquet
-    config.yaml                 #   filled-in config, sha256 per table, provenance
+  inputs/<input>/               # built once, read-only
+    datapackage.json            #   manifest: the files it refers to, sha256 each, provenance
   agents/<agent>/               # created by init: all this agent did, and nothing else
     setup.yaml                  #   fixed: input, commit, compute, kind (agent|human), read-only
     brief.md                    #   optional extra instructions, read-only
@@ -335,7 +335,7 @@ If a row has neither, the stage is not designed yet.
 
 Build order:
 
-1. the input build
+1. the contracts of what the stage reads and writes (`contract-design`), then the input build
 2. `run`
 3. the `get_*` each decision needs, overview first, depth after
 4. `set_*` with typed models
@@ -367,6 +367,8 @@ means in a workflow, because a workflow built on other tools loses the guarantee
 - **`loguru`** for logs of `run` and jobs. A command's stdout holds only its YAML result, so the
   agent and the call log parse it without noise.
 - **`pandas` / `pyarrow`** for tables, written as parquet; YAML for what an agent reads or sets.
+- **`pandera`** for every table that crosses a boundary, and a Frictionless `datapackage.json` per
+  folder of artifacts (`contract-design`).
 
 ## Anti-patterns (each one seen in practice)
 

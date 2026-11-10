@@ -1,6 +1,6 @@
 {
   "name": "personal-skills",
-  "version": "1.10.9",
+  "version": "1.11.0",
   "description": "Agent skills adapted for scientific and data-science work, forked from mattpocock/skills.",
   "author": {
     "name": "Adriano Martinelli",
@@ -52,6 +52,7 @@
     "./skills/science/agentic-system-design",
     "./skills/science/asd-ste100",
     "./skills/science/audit-tests",
+    "./skills/science/contract-design",
     "./skills/science/delete",
     "./skills/science/document-status",
     "./skills/science/jsonargparse",
