@@ -1,6 +1,6 @@
 ---
 name: agentic-system-design
-description: How to design a workflow that agents operate. Covers commands that run, inspect and decide, fixed config and decision files, and one folder per agent. Also covers agent definitions and skills with hooks, snapshots, the launch of agents, and feedback and log review. Use it before you build or change anything agents operate. Examples are a stage or step, a command or view, a decision file, an agent definition or its hooks, or the setup of agents. Triggers: "design a stage", "add a step", "add a tool/view for agents", "agent workflow", "launch agents", "orchestrate agents".
+description: How to design a workflow that agents operate. Covers commands that run, inspect and decide, fixed config and decision files, and one folder per agent. Also covers agent definitions and skills with hooks, snapshots, the launch of agents, and feedback and log review. Use it before you build or change anything agents operate. Examples are a stage or step, a command or view, a decision file, an agent definition or its hooks, or the setup of agents. Triggers - "design a stage", "add a step", "add a tool/view for agents", "agent workflow", "launch agents", "orchestrate agents".
 ---
 
 # agentic-system-design

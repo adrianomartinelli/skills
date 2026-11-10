@@ -1,6 +1,6 @@
 ---
 name: delete
-description: Guard for every delete that an agent does. Deletes a path only if it resolves strictly below `OUTPUTS_DIR`, `<repo>/.snapshots/` or `<repo>/.envs/`, and refuses input data, code and every other path. There, clean up and retire obsolete outputs, snapshots and environments as the work needs, without asking the user. Use for every delete in a project with `OUTPUTS_DIR` in `.env`. Triggers: delete or clean up outputs, runs, snapshots or environments, retire obsolete outputs, free disk space.
+description: Guard for every delete that an agent does. Deletes a path only if it resolves strictly below `OUTPUTS_DIR`, `<repo>/.snapshots/` or `<repo>/.envs/`, and refuses input data, code and every other path. There, clean up and retire obsolete outputs, snapshots and environments as the work needs, without asking the user. Use for every delete in a project with `OUTPUTS_DIR` in `.env`. Triggers - delete or clean up outputs, runs, snapshots or environments, retire obsolete outputs, free disk space.
 ---
 
 # delete
