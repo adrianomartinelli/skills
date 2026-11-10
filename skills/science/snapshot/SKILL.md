@@ -1,6 +1,6 @@
 ---
 name: snapshot
-description: Freeze one commit of a repository (its files, its own pixi environment, its `.env`) in `<repo>/.snapshots/<commit>/` with `create_snapshot.sh`, and run Slurm jobs and pinned agent sessions from it instead of the live checkout. Covers why (parallel work, queued jobs, no installs at run time), the layout and logs, and how to start a job or a session in a snapshot. Use before submitting a Slurm job, before launching an agent session that must stay on one commit, or when several agents or humans work in one repository at once. Triggers: "snapshot", "create_snapshot", "freeze the code", "run from a snapshot", "launch an agent in a snapshot".
+description: Freeze one commit of a repository (its files, its own pixi environment, its `.env`) in `<repo>/.snapshots/<commit>/` with `create_snapshot.sh`, and run Slurm jobs and pinned agent sessions from it instead of the live checkout. Covers why (parallel work, queued jobs, no installs at run time), the layout and logs, and how to start a job or a session in a snapshot. Use before submitting a Slurm job, before launching an agent session that must stay on one commit, or when several agents or humans work in one repository at once. Triggers - "snapshot", "create_snapshot", "freeze the code", "run from a snapshot", "launch an agent in a snapshot".
 ---
 
 # snapshot
