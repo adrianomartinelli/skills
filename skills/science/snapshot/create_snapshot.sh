@@ -15,8 +15,10 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --commit) commit=${2:?$usage}; shift 2 ;;
         --log)
-            [[ "${2:-}" =~ ^[A-Za-z0-9._-]+$ && "$2" != . && "$2" != .. ]] \
-                || { echo "--log needs one path segment; $usage" >&2; exit 2; }
+            # A relative path below .logs/<commit>/: no leading /, no empty, . or .. segment.
+            [[ "${2:-}" =~ ^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ \
+                && "/$2/" != */./* && "/$2/" != */../* ]] \
+                || { echo "--log needs a relative path of named segments; $usage" >&2; exit 2; }
             logs+=("$2"); shift 2 ;;
         *) echo "$usage" >&2; exit 2 ;;
     esac

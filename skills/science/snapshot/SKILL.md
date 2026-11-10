@@ -45,8 +45,9 @@ The last line of stdout is the snapshot's path. Paste that path literally into t
 - `--commit <sha>`: the commit to freeze. The default is `HEAD`, and then the script refuses
   uncommitted changes to tracked files: they would look included and are not. Untracked files do
   not count.
-- `--log <name>`, repeatable: makes `.logs/<commit>/<name>/` for job output. `<name>` is one path
-  segment: the script, skill or agent that submits.
+- `--log <name>`, repeatable: makes `.logs/<commit>/<name>/` for job output. `<name>` is a relative
+  path (`ingest`, `hoch/a1`; no leading `/`, no `.` or `..`): the script, skill or agent that
+  submits.
 
 Call it before every submission: a finished snapshot is reused, and only the log folders are added.
 One snapshot per commit, shared by every session and job of that commit.
