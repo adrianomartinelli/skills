@@ -57,6 +57,7 @@ Apply the baseline prompt above, plus these explicit review rules:
    - Question unnecessary optionality, `unknown`, `any`, or cast-heavy code when a clearer type boundary could exist.
    - Prefer explicit typed models or shared contracts over loosely-shaped ad-hoc objects.
    - If a branch relies on silent fallback to paper over an unclear invariant, ask whether the boundary should be made explicit instead.
+   - This review keeps behavior. Whether a fallback, shim, special case, or unrequested feature should exist at all, and so be deleted, is the job of the `fallback-review` skill.
 
 6. **Keep logic in the canonical layer and reuse existing helpers.**
    - Call out feature logic leaking into shared paths or implementation details leaking through APIs.
