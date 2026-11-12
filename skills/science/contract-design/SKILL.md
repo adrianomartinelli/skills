@@ -45,6 +45,29 @@ class RunConfig(BaseModel):
     seed: int                                  # no default: someone chooses it
 ```
 
+### Variants are a discriminated-union field
+
+*Prevents:* a config with variants (two models, two methods) gets variant rules in the caller or
+the core: which keys are allowed before the variant is chosen, which values to check, what a
+changed variant means. Each rule closes one hole and opens the next.
+
+Make the variant a pydantic discriminated-union field and let pydantic resolve it. A missing
+variant is reported as `missing`; an unknown `kind`, parameters set without a `kind`, and another
+variant's parameters (`extra="forbid"`) are refused. Never resolve variants in caller or core code.
+A new variant is a new instance, since a merge cannot drop the old variant's parameters.
+
+```python
+class TissueNet(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["tissuenet"]
+    image_mpp: float = 1.0
+
+class Segmentation(BaseModel):
+    model: Annotated[Mesmer | TissueNet, Field(discriminator="kind")]
+
+# patched as {model: {kind: tissuenet}}
+```
+
 ### Parse, don't validate
 
 *Prevents:* checks scattered through the code (`if "x" in df`, `assert`), where each one tests a
