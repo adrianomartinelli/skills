@@ -1,6 +1,6 @@
 ---
 name: delete
-description: Guard for every delete that an agent does. Deletes a path only if it resolves strictly below `OUTPUTS_DIR`, `<repo>/.snapshots/` or `<repo>/.envs/`, and refuses input data, code and every other path. There, clean up and retire obsolete outputs, snapshots and environments as the work needs, without asking the user. Use for every delete in a project with `OUTPUTS_DIR` in `.env`. Triggers - delete or clean up outputs, runs, snapshots or environments, retire obsolete outputs, free disk space.
+description: Guard for every delete that an agent does. Deletes a path only if it resolves strictly below `OUTPUTS_DIR`, `<repo>/.snapshots/` or `<repo>/.envs/`, and refuses input data, code and every other path. There, clean up and retire obsolete outputs, snapshots and environments as the work needs, without asking the user. Use for every delete in a project with `OUTPUTS_DIR` in `.env` or `.env.shared`. Triggers - delete or clean up outputs, runs, snapshots or environments, retire obsolete outputs, free disk space.
 ---
 
 # delete
@@ -19,10 +19,11 @@ pixi run python <this skill's base directory>/delete.py [--check] <path> [<path>
 ```
 
 A list or a glob is fine. `--check` reports each path and deletes nothing. The script reads
-`OUTPUTS_DIR` from the project's `.env`, follows every symlink, and deletes a path only if
-it is strictly below `OUTPUTS_DIR`, `.snapshots/` or `.envs/` and carries no `IN_USE` marker.
+`OUTPUTS_DIR` from the environment, else the project's `.env`, else its `.env.shared`, follows
+every symlink, and deletes a path only if it is strictly below `OUTPUTS_DIR`, `.snapshots/` or
+`.envs/` and carries no `IN_USE` marker.
 
-- If an assert fails (no `.env`, or a missing or relative `OUTPUTS_DIR`), show the user the error.
+- If an assert fails (no `.env` or `.env.shared`, or a missing or relative `OUTPUTS_DIR`), show the user the error.
 - Tell the user each `refused` line. Do not delete a refused path in a different way.
 - An `in use` line names the marker of a running job. The marker holds the job ID. If
   `sacct -j <job_id> -X -n -o State` shows that the job ended, the marker is stale: delete the

@@ -1,7 +1,8 @@
 """Delete paths strictly below OUTPUTS_DIR, .snapshots/ or .envs/; refuse every other path.
 
 Run from the project root: `pixi run python <this dir>/delete.py [--check] <path> [<path> ...]`.
-OUTPUTS_DIR and DATA_DIR come from the project's `.env` (python-dotenv, a pydantic-settings dependency).
+OUTPUTS_DIR and DATA_DIR come from the environment, else the project's `.env`, else its committed
+`.env.shared` (the precedence of pydantic-settings; python-dotenv is its dependency).
 """
 
 import argparse
@@ -10,7 +11,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 
 MARKER = "IN_USE"  # written by a running job, see the slurm-submit skill
 
@@ -33,7 +34,10 @@ def main():
     parser.add_argument("paths", nargs="+")
     args = parser.parse_args()
 
-    assert load_dotenv(".env"), f"no .env in {Path.cwd()}: run from the project root"
+    files = [f for f in (".env.shared", ".env") if Path(f).is_file()]
+    assert files, f"no .env or .env.shared in {Path.cwd()}: run from the project root"
+    for key, value in {k: v for f in files for k, v in dotenv_values(f).items()}.items():
+        os.environ.setdefault(key, value)  # .env over .env.shared, the environment over both
     outputs = Path(os.path.expandvars(os.environ.get("OUTPUTS_DIR", ""))).expanduser()
     assert outputs.is_absolute(), f"OUTPUTS_DIR is missing or not absolute: {outputs}"
     repo_roots = [(Path.cwd() / d).resolve() for d in (".snapshots", ".envs")]
