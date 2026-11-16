@@ -43,7 +43,7 @@ Write a numbered list with these groups:
 Name each decision that only the user can make, with a recommendation. Group D always needs the
 user. Do not edit anything before the user approves.
 
-## 3. Claim the work (PRC-5 to PRC-7)
+## 3. Claim the work (PRC-5)
 
 1. Read the `WORKTREE.md` scope line of each remote branch, and look for overlap with this sync.
 2. Run `git worktree add -b template-sync ../<repo>-template-sync main`.
