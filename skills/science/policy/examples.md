@@ -85,7 +85,7 @@ deleted, delete its lines here too.
   shape. Read the line with `git show <branch>:WORKTREE.md`.
 - PRC-2: The first line of `WORKTREE.md` uses a token that its comment block does not declare.
 - PRC-3: The first line of `WORKTREE.md` does not describe the current state of the branch.
-- PRC-7: The diff changes many files on a branch whose `WORKTREE.md` has no Scope line.
+- PRC-5: The diff changes many files on a branch whose `WORKTREE.md` has no Scope line.
 - PRC-9: A commit message or a code comment states a lesson that applies beyond this change, and
   `docs/retrospective.md` has no entry for it.
 - PRC-10: The diff changes or deletes existing lines of `.agent-sessions`.
