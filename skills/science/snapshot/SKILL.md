@@ -116,8 +116,7 @@ not need a new one.
 Claude Code sets `CLAUDE_PROJECT_DIR` to that folder at start-up, and hooks run from
 `CLAUDE_PROJECT_DIR`. So the session's hooks run the snapshot's code too. Never start a pinned
 role as a subagent of the Agent tool: a subagent runs in the working directory of its parent, the
-live checkout, so it runs unpinned code under the parent's hooks. `agentic-system-design` covers
-`launch`, the binding of a session to an agent, and the agent's own call log.
+live checkout, so it runs unpinned code under the parent's hooks.
 
 **Git inside a snapshot.** A snapshot has no `.git`, so git walks up to the live checkout:
 `git rev-parse HEAD` there reports the checkout's commit, not the snapshot's, and `git checkout`

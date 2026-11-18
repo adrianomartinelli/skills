@@ -1,104 +1,140 @@
 ---
 name: agentic-system-design
-description: How to design a workflow that agents operate and humans can run the same way - the workspace an agent works in, the config instances it sets, the tools that run them, the views it reads, the append-only log of its decisions, the export it hands on, and how agents are launched, isolated and reviewed. Use it before you build or change anything agents operate - a stage, a tool or view, a config type, an item command, an agent definition or its hooks, the launch of agents. Triggers - "design a stage", "add a tool/view for agents", "agent workflow", "launch agents", "orchestrate agents".
+description: How to design a system that agents operate and humans use the same way - tools built around contracts, views built around artifacts, an append-only decision log, an export, and the build order (contracts, an end-to-end dummy, then the real logic). Use it before you build or change anything agents operate - a tool, a view, a config type, an artifact schema, an item command. Triggers - "add a tool/view for agents", "agent workflow", "design a workflow agents run".
 ---
 
 # agentic-system-design
 
-How to build a workflow that agents operate: what an agent sees, calls and may change, and how its
-work is recorded and handed on. The project's `AGENTS.md` sets the rules every design follows
-(`DES-1` to `DES-7`) and the preferred tools. The `contract-design` skill governs the boundaries
-between programs. How to read the views of one workflow is that workflow's skill.
+The principles for a system that agents operate: what an agent sees, calls and may change, and how
+its work is recorded and handed on. The project's `AGENTS.md` sets the rules every design follows
+(`DES-1` to `DES-7`) and the preferred tools. The `contract-design` skill governs the contracts
+themselves. How to read the views of one workflow is that workflow's skill.
 
 `patterns.md` next to this file holds a runnable code example for each section marked *(P1)* to
 *(P7)*. Read the pattern before you build the part.
 
+## Terms
+
+- **Contract**: what crosses a boundary between programs, written down so both sides can check it:
+  a config type, an artifact schema, a relation between artifacts, a command's request model.
+- **Workspace**: the one folder a session works in, on one commit. Every command writes into it,
+  and only there.
+- **Command**: one subcommand of the agent CLI, the one program an agent calls. Its kinds are
+  below.
+- **Config type, config instance**: a config type is a contract for a tool's parameters. An
+  instance is a named copy of it that the agent creates and sets.
+- **Tool**: a command that computes (`segment`, `cluster`). It runs one config instance and writes
+  a tool output. Not a harness tool such as `Bash` or `Read`.
+- **Artifact**: data with a schema (a table, an image stack) that a tool writes and that tools and
+  `export` read.
+- **Manifest**: a `datapackage.json` in the Frictionless Data Package format. It lists the
+  artifacts of its own folder, each with a `name`, a `path` relative to the manifest, and a
+  `hash` (`sha256:<hex>`). It is the only way a tool finds an artifact.
+- **Tool output**: the folder `<workspace>/<identity>/` that one tool call writes: the frozen
+  config, the artifacts and the manifest. The identity is the hash of the frozen config.
+- **View**: a command that reads artifacts and prints numbers (`get_*`) or draws a figure
+  (`draw_*`). It changes nothing.
+- **Item**: one row of an artifact that the agent decides on (a cluster, a channel), named by
+  `--ids`.
+- **Decision log**: `decisions.yaml`, append-only, one entry per accepted call.
+- **Brief**: the text a human gives the agent: targets, hints, what to choose. No code reads it.
+- **Export**: the validated artifacts and their manifest in `export/`, the result of a workspace
+  that other workspaces read.
+
 ## Principles
 
-- **Agents have agency.** The agent chooses: its config instances and their names, the values it
-  sets, which tools it runs and in which order, which views it reads, when it tries another
-  instance, and when it exports. The code offers commands, validates each call, and refuses an
-  invalid one. It never chooses for the agent (no automatic selection of a parameter or a channel)
-  and never tells it what to do next. A call needs only what its computation needs.
-- **Agents decide; tools give them the means.** The state of the work is the decision log and the
-  finished outputs, read again by the command that needs them. No code tracks the progress of the
-  work.
-- **Built for agents, equally easy for humans.** A human runs the same commands in the same
-  workspace, reads the same outputs, and decides through the same calls. `--help` shows each
-  command's model; folder names, the log and the configs are readable; figures are PNG files; a
-  refusal says what to change. A step that is awkward for a human is awkward for an agent too.
-- **Every number a decision rests on was printed by a workflow command**, and every figure was
-  drawn by one. An agent that lacks a view says so with `feedback` and decides with what exists,
-  or stops. It never computes the view itself: a decision built on ad-hoc analysis looks exactly
-  like a good one, and nobody can check or repeat it.
+- **Built for agents and humans equally.** A human runs the same commands in the same workspace,
+  reads the same outputs, and decides through the same calls. `--help` shows each command's
+  contract; folder names, the decision log and the configs are readable; figures are PNG files; a
+  refusal says what to change. A step that is awkward for a human is awkward for an agent too, and
+  the fix is the same.
+- **Agents have agency.** The agent chooses its config instances, the values it sets, which tools
+  it runs and in which order, which views it reads, and when it exports. The code validates each
+  call and refuses an invalid one. It never chooses for the agent (no automatic choice of a
+  parameter or a channel) and never tells it what to do next. The state of the work is the
+  decision log and the finished tool outputs; no code tracks progress.
+- **Every number a decision rests on was printed by a view**, and every figure was drawn by one.
+  When no view shows the evidence a decision needs, the agent says so with `feedback` and decides
+  with what exists, or stops. It never computes the evidence itself: a decision built on ad-hoc
+  analysis looks exactly like a good one, and nobody can check or repeat it.
+- **Tools are built around contracts.** A tool is its config type, the schemas of the artifacts it
+  reads, and the schemas of the artifacts it writes. Everything it assumes is in those contracts;
+  every other assumption stays inside the tool.
+- **Tools are loosely coupled: they share data, never knowledge.** A tool knows the contracts of
+  what it reads, and nothing about the tool that wrote it, the workspace it lives in, or how
+  another tool lays out its folder. Each input is a named field of its config that holds the path
+  of a manifest, and the field's name is the input's name everywhere it appears. The tool finds
+  the artifact in that manifest by name and validates it with its schema. So any manifest that
+  lists a valid artifact works: a tool output in this workspace, the export of another workspace,
+  a table a human built.
+- **Views are built around artifacts.** A view reads artifacts and shows them to the agent and the
+  human. An artifact is data; a view's output is a picture of data. A tool output's manifest lists
+  artifacts only. No tool, no export and no other view reads a view's files, and they can be
+  deleted and drawn again at any time. A number that a tool needs is an artifact: a tool computes
+  it, not a view.
 
-## The shape
+## A minimal example
 
-One session works on one stage, in one folder of its own, the **workspace**:
+Two tools, `segment` and `cluster`, in one workspace. Each line is one literal call:
 
 ```
-admin launch --stage <s> --workdir <dir> --input '{artifact: path}' --brief <file>
-  -> <workspace>/ setup.yaml, brief.md, input/datapackage.json, decisions.yaml (empty)
-agent or human:
-  init <name> <type>                a config instance of a config type
-  set_config <name> <patch>         sets tunable fields, with a reason
-  <tool> <name>                     runs the instance -> <workspace>/<identity>/ (manifest last)
-  get_* / draw_*                    views: print numbers, draw figures
-  set_<item> <name> <ids> <patch>   decisions per item, with a reason, checked by the artifact's schema
-  export [<name>]                   validates every artifact, writes export/ for the next stage
+init seg1 segmentation
+set_config seg1 '{image: /data/run7/export/datapackage.json, nuclear: [DNA1]}' --reason "brief: DNA1 is the nuclear stain"
+segment seg1                -> 3f9a/  config.yaml  cells.parquet  datapackage.json
+get_cells seg1              prints the cell count per image
+init cl1 clustering
+set_config cl1 '{cells: 3f9a/datapackage.json, k: 12}' --reason "get_cells: 2 to 5 thousand cells per image"
+cluster cl1                 -> 8c21/  config.yaml  clusters.parquet  assignments.parquet  datapackage.json
+get_clusters cl1            prints one row per cluster: size, median of each marker
+draw_clusters cl1           -> views/8c21/heatmap.png
+set_cluster cl1 --ids 3 7 '{label: T cell}' --reason "get_clusters: CD3 is the highest median in 3 and 7"
+export cl1                  -> export/  clusters.parquet (labels applied)  datapackage.json
 ```
 
-## Work order
+```python
+class ClusteringTunable(BaseModel):  # part of the cluster tool's contract
+    model_config = ConfigDict(extra="forbid")
+    cells: Path   # a manifest that lists a `cells` artifact; who wrote it does not matter
+    k: int        # no default: the agent chooses
+```
 
-Follow `DES-6` per work package (the core, one stage):
+- `set_config` logs `cells` as an absolute path, and every entry records the commit.
+- `cluster` reads `3f9a/datapackage.json` exactly as it would read the export of another
+  workspace: it finds `cells` in the manifest and validates it with the `Cells` schema. It never
+  knows that `segment` exists. `segment` reads its image the same way from another workspace.
+- `cells.parquet`, `clusters.parquet` and `assignments.parquet` are artifacts. The printed rows
+  and `heatmap.png` are views: the agent and the human both read them, and nothing else does.
+- `decisions.yaml` holds one entry for every call above except the views. The reasons cite what
+  the views printed.
+
+## Build order: contracts, a dummy end to end, then the real logic
+
+Follow `DES-6`. Each step is done before the next one starts.
 
 1. **Spec.** For each decision the agent makes: the config field or item command that records it,
-   and the view that prints its evidence. A decision without both is not designed yet. For each
+   and the view that shows its evidence. A decision without both is not designed yet. For each
    fixed value: why it is fixed.
-2. **Contracts.** Config types, artifact schemas, relations between artifacts, the CLI flow, and a
-   worked example: the commands, the log entries, the files, the refusals. Review until they agree.
-3. **Dummies.** Tools with the real signatures that return small schema-valid artifacts. The worked
-   example runs through the real CLI as a test.
-4. **Real logic**, one dummy at a time; the worked-example test stays green.
-5. **Agent definition and skill**, then **one pilot agent**, then log review and feedback, then the
-   changes they show.
+2. **Contracts.** Config types, artifact schemas, relations between artifacts, the commands, and a
+   worked example like the one above: the calls, the log entries, the files, the refusals. Review
+   until they agree.
+3. **Dummies, end to end.** Every tool with its real contracts and no logic: it writes small,
+   schema-valid artifacts. The worked example runs through the real CLI, as a test. This prototype
+   exists to find the problems of the design while they are cheap: a decision without a view, a
+   tool that needs to know another tool, a step that is awkward to run or to read. Fix each one in
+   the contracts.
+4. **Real logic**, one dummy at a time. The worked-example test stays green.
+5. **The agent's role and skill**, then one pilot agent, then feedback and the changes it shows.
 
-## 1. Workspace and launch
-
-- **One session, one stage, one folder.** The workspace holds `setup.yaml` (stage, commit, session,
-  who launched it; read-only), `brief.md`, `input/datapackage.json`, `decisions.yaml`, the tool
-  outputs, `views/` and `export/`. Everything in it changes through commands. The agent reads only
-  its workspace and its input.
-- **The launcher chooses where.** The workspace path is the launcher's choice (`--workdir`), with
-  the session id as the last folder. The code knows no project layout.
-- **The input is a manifest of references.** `input/datapackage.json` lists each artifact the
-  stage reads: path, sha256, producer. `launch` validates each artifact against its schema and the
-  relations between them. Another input is another workspace.
-- **The brief is text.** Everything a human or an orchestrator tells the agent (roles, targets,
-  hints, what to choose) is in the brief, in the prompt and copied to `brief.md`. No code reads it.
-  The agent acts on it through its commands and cites it in its reasons.
-- **`launch` chooses the session id** and starts the agent as its own headless session with that
-  id, in a snapshot of the chosen commit (the `snapshot` skill), with the workspace in its
-  environment (`WORKSPACE_DIR`). The folder name is the session id, so every call of the session
-  belongs to the workspace from the first one on. `admin setup` makes the same workspace for a
-  human, without a session.
-- **Start a role only with `launch`**, as its own session. A subagent of the orchestrator runs in
-  the orchestrator's checkout, on unpinned code, and without the role's hooks.
-
-## 2. Commands
-
-Two CLIs, one subcommand per verb, each with its own typed request model: the **agent CLI** (all
-an agent calls; it finds its stage in `setup.yaml`) and the **admin CLI** (launch, setup, and
-entrypoints only jobs call). The same two CLIs serve every stage.
+## Commands
 
 | kind | does | writes |
 |---|---|---|
 | `init` | names a config instance of a type | a log entry |
 | `set_config` | patches an instance's tunable fields, with a reason | a log entry |
-| tool (a domain verb: `measure`, `segment`, `cluster`) | runs one instance | a tool output, a log entry |
-| view (`get_*`, `draw_*`) | prints numbers; draws a figure | figures under `views/` |
+| tool (`segment`, `cluster`) | runs one instance | a tool output, a log entry |
+| view (`get_*`, `draw_*`) | prints numbers, draws a figure | figures under `views/` |
 | item command (`set_<noun>`, `annotate`) | sets values of named items, with a reason | a log entry |
-| `export` | validates and publishes | `export/` and a log entry |
+| `export` | validates and publishes | `export/`, a log entry |
 | `feedback` | reports friction | `feedback.jsonl` |
 
 - **Typed and strict.** `--help` shows the request model. An unknown flag or key is an error. Each
@@ -106,146 +142,104 @@ entrypoints only jobs call). The same two CLIs serve every stage.
 - **Refusals raise.** The last line says what is wrong and what to change. A refused call changes
   nothing. A missing value is not a refusal: the call is accepted and reports `incomplete: [...]`.
 - **Small by default, depth on request.** An overview with one row per item and the columns that
-  settle most cases; a detail command for named items (`--ids`); flags that add columns. The
-  overview shows the rows that need a decision. One cap for every view, announced with how many
-  rows it dropped and the flag that shows them.
-- **One name per concept.** `--ids` selects a view's own rows in every view; a flag has one type
-  everywhere.
-- **Reproducible evidence.** A view prints the same output for the same outputs, arguments and
+  settle most cases; detail for named items (`--ids`); flags that add columns. One row cap for
+  every view, announced with how many rows it dropped and the flag that shows them.
+- **One name per concept.** A flag has one name and one type in every command.
+- **Reproducible evidence.** A view prints the same output for the same artifacts, arguments and
   commit.
-- **Literal invocations.** Document every command as one full literal invocation, one per Bash
-  call, without shell variables, loops or chains: isolated sessions refuse those, and a literal
-  call is easy to review.
+- **Literal invocations.** Document every command as one full literal call, without shell
+  variables, loops or chains.
 - **Long work runs as a job.** The agent submits a tool to the scheduler itself and watches its own
   jobs. The tool's log entry is appended when the call starts, so a failed job stays visible.
-- **Grow from use.** Add a command when feedback or a log review shows the need. Delete a command
-  that no agent used in a round.
+- **Grow from use.** Add a command when feedback shows the need. Delete a command nobody uses.
 
-### Two readers
-
-- **One call serves the agent and the human.** The agent decides from the printed numbers; the
-  same call draws the figure a human would read the same data from (a histogram where the agent
-  reads quantiles). Every number a decision rests on is printed, never only drawn.
-- **When the image is the data** (cell crops, an overlay), the image is the one artifact both read.
-- **One question per figure**, under 2 MP and 2000 px on the long edge, so an agent can read it.
-  Split a figure into files when it grows with the data.
-
-## 3. Configs *(P1, P2)*
+## Configs *(P1, P2)*
 
 - **A config type is a fixed model and a tunable model**, both `extra="forbid"`, combined flat into
   the tool's config. A fixed value is the fixed model's default, in the code: changing it is a
   commit. The tunable model holds what the agent chooses; a field without a default must be set.
-  What the user wants chosen goes in the brief.
-- **Patches merge per key** in log order (`OmegaConf.merge`), then the tunable model validates the
-  result. A field that names items of the input (channels, targets) is checked by its own
-  validator against the validation context. Variants are a discriminated-union field
-  (`contract-design`).
+- **Patches merge per key** in log order, then the tunable model validates the result. A field that
+  names items of an input (channels, targets) is checked by its own validator. Variants are a
+  discriminated-union field (`contract-design`).
 - **Every parameter has an owner.** Fixed, with a comment that says why, or tunable, with a view
   that shows the evidence for choosing it.
-- **A config that reads an earlier output** names it by a field that holds the path to that
-  output's `datapackage.json`; the tool checks that the artifacts it needs are listed.
-- **Once a tool used an instance, it is frozen.** Another choice is another instance, with its own
-  name and its own fields.
+- **Once a tool used an instance, it is frozen.** Another choice is another instance.
+- **Input paths are absolute.** `set_config` resolves each input field to an absolute path before
+  it logs the patch, so no path depends on the current directory. Only the paths inside a manifest
+  are relative, to the manifest.
 
-## 4. Decisions: an append-only log *(P3, P5)*
+## Decision log *(P3, P5)*
 
 - **One `decisions.yaml` per workspace, append-only.** The command writes each entry: the command,
-  the instance, the patch, the reason, the manifests it read and wrote (`input`, `output`), `at`,
-  and `by` (the session id, or `human`). Whatever a command resolves (the ids a `--default` stood
-  for) goes into its entry, so the file is read without searching it. A refused call appends
-  nothing. A hook refuses edits of the file.
+  the instance, the patch, the reason, its inputs by name (`input: {cells: <manifest>}`), the
+  manifest it wrote (`output`), `commit`, `at`, and `by` (the session id, or `human`). A refused
+  call appends nothing. Nobody edits the file by hand; a hook refuses edits.
 - **Reasons cite evidence in words**: the numbers the call rests on and the view they came from.
 - **A later entry is the revision**, and both entries stay.
-- **Item decisions are patches validated by the artifact's own schema.** The artifact's state is
-  its items with every value null and every logged patch applied, per key, in log order. A call
-  validates the rows it names: `not_nullable` is incomplete, any other failure refuses. Export
-  validates the whole table with the same schema.
-- **A call applies to the output it read.** Each entry records that output, so a call made on one
-  output never applies to another.
+- **Item decisions are patches validated by the artifact's own schema.** A call validates the rows
+  it names; `export` validates the whole table with the same schema.
+- **A call applies to the tool output it read**, never to another one.
 - **Defaults.** One `--default` call covers the items that have no value yet; its entry lists them.
 
-## 5. Tool outputs *(P4)*
+## Tool outputs and artifacts *(P4, P6, P7)*
 
-- **One folder per frozen config.** A tool builds the instance, validates it (incomplete: refused),
-  freezes it with the hashes of what it reads, and writes `<workspace>/<identity>/`: the frozen
-  `config.yaml`, its artifacts, and its `datapackage.json` last. The name and the provenance are in
-  the frozen config but not in the identity.
+- **One folder per frozen config.** A tool validates the instance, freezes it with the commit and
+  the hash of each artifact it reads (from that artifact's manifest), and writes the frozen
+  `config.yaml`, its artifacts, and its manifest last, which records the commit too.
+- **One workspace, one commit.** The commit is part of the identity, so new code never reuses an
+  old output. Every command refuses a workspace of another commit and a dirty tree. New code means
+  a new workspace that reads the old one's export; an old decision log is never replayed by new
+  code.
 - **The manifest is the "finished" marker.** A finished folder is reused; an unfinished one is
   written again.
-- **A tool computes only from manifests and its frozen config.** If it reads state derived from the
-  log (labels in effect), it writes that state into its output and hashes it into its config.
-- **Views write only under `views/`**, and nothing reads a view's files.
+- **A tool computes only from manifests and its frozen config.** If it reads state from the
+  decision log (labels in effect), it writes that state into its output and into its frozen config.
+- **A status annotates; each tool filters.** An artifact keeps every item. A tool that leaves out
+  excluded items says so in its docstring.
+- **Relations between artifacts are declared once** and checked wherever both meet: in a tool that
+  reads both, and at export.
+- **`export` is the agent's last command.** It builds the artifacts from the tool output it
+  publishes and the decisions in effect, validates schemas and relations, and writes `export/` with
+  its manifest. Its refusal names items, not rows.
 
-## 6. Inputs, statuses and export *(P6, P7)*
+## Views
 
-- **A stage declares the artifacts it reads**, each required and checked against its schema. Who
-  produced an artifact does not matter.
-- **A status annotates; each tool filters.** The input keeps every item. A tool that leaves out
-  excluded items says so in its docstring. Statuses of several stages are joined on their key when
-  read.
-- **Relations between artifacts are declared once** and checked wherever both meet: at launch and
-  at export.
-- **`export` is the agent's last command.** It builds the artifacts from the output it publishes
-  and the decisions in effect, validates schemas and relations, and writes `export/` with its
-  manifest. The refusal names items, not rows, and is the agent's feedback. The next stage reads
-  `export/` through its own input manifest.
+- **One call serves the agent and the human.** The agent decides from the printed numbers; the same
+  call draws the figure a human would read the same data from (a histogram where the agent reads
+  quantiles). Every number a decision rests on is printed, never only drawn.
+- **When the image is the data** (cell crops, an overlay), the image is the one output both read.
+- **One question per figure**, under 2 MP and 2000 px on the long edge, so an agent can read it.
+  Split a figure into files when it grows with the data.
+- **Views write only under `views/`.**
 
-## 7. Agent definitions, skills and hooks
+## Agents and feedback
 
-Each role is an agent definition, and each workflow has a skill. Both can declare hooks in their
-frontmatter:
-
-| where | restricts tools | hooks run |
-|---|---|---|
-| agent definition | `tools:` (allowlist), `disallowedTools:` | for every call of the agent, while it runs, also as the main thread (`claude --agent <role>`) |
-| skill | `disallowed-tools:` while the skill is active | from the moment the skill is invoked to the end of the session |
-
-- **The role file holds what every turn needs.** Who the agent is, its CLI in literal form, that it
-  decides only from command output, how it submits and watches jobs, when it gives `feedback`, and
-  the shape of its final message. The skill holds reference the agent reads again (also after a
-  compaction): how to read each view.
-- **`tools:`** `Bash, Read, Glob, Grep` and the job-watching tool. Add `Write` only for a role that
-  writes a file by hand.
-- **One `PreToolUse` hook is the gate.** It accepts the agent CLI, the scheduler commands the skill
-  uses, and reads; it refuses everything else with exit 2 and a reason that names the command to
-  use. It sets `"onFailure": "block"`, and any error in the hook refuses the call (`DES-5`).
-- **Hooks run the snapshot's code** (`cd "$CLAUDE_PROJECT_DIR"` first), and only in a folder that
-  Claude Code trusts; outside one they are skipped with no error, so the pilot checks they fire.
-- **Block only what is clearly unwanted and simple to detect.** Leave the rest to log review.
-
-## 8. Feedback and log review
-
+- **The agent's role file holds what every turn needs**: who it is, its CLI in literal form, that
+  it decides only from command output, when it gives `feedback`, and the shape of its final
+  message. The workflow's skill holds what it reads again: how to read each view.
+- **Sessions run pinned code** from a snapshot (the `snapshot` skill).
 - **`feedback` is one command in every workflow**: `kind` (`missing_view`, `unexpected`,
-  `too_verbose`, `problem`, `other`), the `command` it concerns, and `text`. It appends to the
-  workspace's `feedback.jsonl`, one point per entry, when the friction happens.
-- **Log review** reads the transcripts and feedback of a round: calls and refusals per command,
-  commands nobody used, deviations (Bash that is not a workflow command, reads outside the
-  workspace and input, refused calls), feedback by kind. A high refusal rate is friction, also
-  without feedback.
-- **Close the loop.** Triage the review into issues; a change cites the feedback it answers; the
-  next review shows whether the friction is gone. A deviation is a signal about the tools first:
-  an agent that ran `python -c` usually lacked a view.
-
-## 9. Orchestrator
-
-The orchestrator (a human or a session) launches agents and reads their exports. It does not
-decide for an agent, call its commands, or do its work: without the hooks and the log, that work
-cannot be reviewed. One agent per stage, or per independent unit of work in a stage.
+  `too_verbose`, `problem`, `other`), the `command` it concerns, and `text`. One point per entry,
+  when the friction happens.
+- **Review the transcripts and the feedback** after a set of sessions: calls and refusals per
+  command, commands nobody used, Bash that is not a workflow command, feedback by kind. A deviation
+  is a signal about the commands first: an agent that ran `python -c` usually lacked a view.
+  Triage into issues; a change cites the feedback it answers.
 
 ## Signs that a design is going off track
 
 | Sign | Look instead at |
 |---|---|
+| A tool that builds a path to another tool's files, globs for the latest output, reads another tool's config, or branches on who wrote its input | loose coupling: a manifest path in the config, the artifact found by name and checked by its schema |
+| A tool or an export that reads a view's figure or printed table | the number is an artifact: a tool computes it |
 | Code that tracks progress or tells the agent what to do next | the agent's agency: commands it chooses, refusals when a call is invalid |
 | Code that chooses a parameter, a channel or an option for the agent | a tunable field the agent sets, with a view for the evidence |
 | A default, a fallback, an "if absent, treat as ..." | a required artifact; an invariant refused at the boundary |
-| A branch for one stage, one caller or one variant | the flaw that needs it (`DES-2`), or a discriminated union |
+| A branch for one caller or one variant | the flaw that needs it (`DES-2`), or a discriminated union |
 | Introspection, a marker type, a registry of rules, a second model of the same data | the library's mechanism (`DES-3`) and the one schema |
-| A cache, a lock, a scratch folder, parallel calls before the workflow runs end to end | the serial version (`DES-4`) |
+| A cache, a lock, a scratch folder, parallel calls before the dummy runs end to end | the serial version (`DES-4`) |
+| Real logic written before the dummy ran end to end | the contracts and the dummy first |
 | A check that lets an action through when it fails | refuse (`DES-5`) |
 | A step a human finds awkward to run or to read | the same awkwardness for the agent: fix the command |
 | A note cites numbers no view printed | add the view, or decide without it and give `feedback` |
-| Every row of every table printed | overview, then `--ids`, then flags that add columns |
-| Commands documented with shell variables and chains | one literal invocation per call |
-| A review fix that adds code, or a spot fixed again in a later round | a fix that deletes; a design question for the user (`DES-7`) |
-| A design that feels hacky | the design: stop and look again |
+| A review fix that adds code, or a spot fixed again later | a fix that deletes; a design question for the user (`DES-7`) |

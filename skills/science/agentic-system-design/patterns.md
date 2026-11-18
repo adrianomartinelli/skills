@@ -4,12 +4,12 @@ One runnable example per section of `SKILL.md` marked *(P1)* to *(P7)*. Run with
 pandera 0.36, OmegaConf 2.4. The rules behind them are `DES-1` to `DES-7` in the project's
 `AGENTS.md`.
 
-## Dummies (work order, step 3)
+## Dummies (build order, step 3)
 
 ```python
 def measure(config: Metrics, read: dict[str, Artifacts], out: Path) -> dict[str, pd.DataFrame]:
     """Dummy: the real signature, a schema-valid table, no logic."""
-    acqs = read["input"].read("acquisitions", ["acq_id"])
+    acqs = read["image"].read("acquisitions", ["acq_id"])
     return {"acq_metrics": acqs.assign(tissue_fraction=0.5)}
 ```
 
@@ -66,34 +66,42 @@ skill.
 ## P3 An append-only decision log; state is a replay
 
 One `decisions.yaml` per workspace, append-only. The command writes each entry, with
-`at` and `by` and the `input` and `output` manifests it read and wrote. A
-refused call appends nothing. A later entry is the revision. State is computed by replaying the
+`commit`, `at` and `by`, its inputs by name (`input`, each config field that names a manifest,
+as an absolute path) and the manifest it wrote (`output`). A refused call appends nothing. A later entry is the revision. State is computed by replaying the
 log.
 
 ```yaml
 - {command: set_config, name: m1, patch: {nuclear: [DNA1]}, reason: "brief: DNA1 is the intercalator",
-   input: [input/datapackage.json], at: 2026-11-12T10:07:12Z, by: 5e0c...}
-- {command: measure, name: m1, input: [input/datapackage.json], output: [3f9a.../datapackage.json], ...}
+   input: {image: /data/run7/export/datapackage.json}, commit: a1b2c3d, at: 2026-11-12T10:07:12Z, by: 5e0c...}
+- {command: measure, name: m1, input: {image: /data/run7/export/datapackage.json}, output: 3f9a.../datapackage.json, ...}
 ```
 
 ```python
 def current_output(entries, name):
     """The output of the name's latest tool entry; finished when its manifest exists."""
     (*_, last) = [e for e in entries if e.get("name") == name and "output" in e]
-    return last["output"][0]
+    return last["output"]
 ```
 
 The rule `by = CLAUDE_CODE_SESSION_ID, else "human"` covers sessions and humans alike.
 
 ## P4 Run identity: an output folder per frozen config
 
-The folder is the hash of the frozen config. The instance's name and its provenance are in
-the config but excluded from the hash, so two names with the same config share one output. The
+The folder is the hash of the frozen config. The commit is in the config and in the hash, so new
+code never reuses an old output. The instance's name and its provenance are in the config but
+excluded from the hash, so two names with the same config share one output. The
 manifest is written last and is the only "finished" marker. A finished folder is reused and an
 unfinished one is rewritten.
 
+The manifest follows the Frictionless Data Package standard: each resource has a `name`, a `path`
+relative to the manifest (never absolute, never `..`: the standard forbids both, so a package
+never points outside its folder), and a `hash` written `sha256:<hex>`. The commit is a property of
+the package, which the standard allows. A reader takes the hash of
+what it reads from the manifest, not by hashing the file again.
+
 ```python
 class Frozen(Metrics):
+    commit: str                                    # in the identity
     name: str
     provenance: dict
     _identity_exclude: ClassVar[frozenset[str]] = frozenset({"name", "provenance"})
@@ -103,10 +111,13 @@ def run_tool(root: Path, config: BaseModel, compute) -> Path:
     if (out / "datapackage.json").exists():
         return out                                   # finished: reuse
     out.mkdir(parents=True, exist_ok=True)           # unfinished: rewrite
-    tables = compute(config)
-    for name, table in tables.items():
-        table.to_parquet(out / f"{name}.parquet")
-    (out / "datapackage.json").write_text(json.dumps({"resources": sorted(tables)}))  # last
+    resources = []
+    for name, table in sorted(compute(config).items()):
+        path = out / f"{name}.parquet"
+        table.to_parquet(path)
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        resources.append({"name": name, "path": path.name, "hash": f"sha256:{digest}"})
+    (out / "datapackage.json").write_text(json.dumps({"commit": config.commit, "resources": resources}))  # last
     return out
 ```
 
@@ -136,7 +147,7 @@ An empty value is null. Why a call was made is its reason, written in words.
 ## P6 A status annotates; each tool filters
 
 Status artifacts are required inputs and only annotate. The input keeps every item. Each
-tool applies its own filter, stated in its docstring. Statuses from several stages are joined on
+tool applies its own filter, stated in its docstring. Statuses from several exports are joined on
 their key when they are read, never copied into one wide artifact.
 
 ```python
@@ -146,7 +157,7 @@ kept = cells.merge(acq_status, on="acq_id").query("status != 'exclude'")[cells.c
 ## P7 Relations between artifacts: declared once
 
 A schema sees one table. A relation sees two. Declare each relation once and check it wherever both
-artifacts meet: when an input is set up, and at export.
+artifacts meet: in a tool that reads both, and at export.
 
 ```python
 RELATIONS = [("cells", "acq_id", "acquisitions", "acq_id"), ...]
